@@ -1,7 +1,12 @@
 import type { Product, ImageType } from "@/lib/types"
 import { generateImage, imageUrlToBase64 } from "@/lib/gemini/client"
 import { buildPrompt, getPromptConfig, getSeed } from "@/lib/gemini/prompts"
-import { uploadImage, generateFilename } from "@/lib/blob/storage"
+import { uploadImage, generateStoragePath } from "@/lib/storage/images"
+import {
+  createGenerationJob,
+  updateGenerationJob,
+  createGeneratedImage,
+} from "@/lib/data/generation"
 
 export interface PipelineJob {
   id: string
@@ -12,6 +17,7 @@ export interface PipelineJob {
   promptUsed?: string
   imageBase64?: string    // Keep in memory for chaining
   imageMimeType?: string
+  generatedImageId?: string  // Database record ID
 }
 
 export type PipelineEvent =
@@ -32,6 +38,8 @@ export interface PipelineOptions {
   imageTypes: ImageType[]
   aspectRatio?: string
   imageSize?: string
+  organizationId: string
+  sourceImageId?: string
   onEvent: (event: PipelineEvent) => void
 }
 
@@ -43,9 +51,13 @@ async function runJob(
   product: Product,
   sourceBase64: string,
   sourceMimeType: string,
+  organizationId: string,
+  sourceImageId?: string,
+  parentImageId?: string,
   aspectRatio?: string,
   imageSize?: string
 ): Promise<PipelineJob> {
+  const startTime = Date.now()
   const prompt = buildPrompt(job.imageType, product)
   const promptConfig = getPromptConfig(job.imageType)
   const seed = getSeed(product.id, job.imageType)
@@ -60,7 +72,25 @@ async function runJob(
     seed,
   })
 
+  const durationMs = Date.now() - startTime
+
   if (!result.success || !result.imageBase64 || !result.mimeType) {
+    // Record failed generation in database
+    await createGeneratedImage({
+      organizationId,
+      productId: product.id,
+      sourceImageId,
+      parentImageId,
+      imageType: job.imageType,
+      imageUrl: '',
+      status: 'failed',
+      promptUsed: prompt,
+      seed,
+      temperature: promptConfig.temperature,
+      generationDurationMs: durationMs,
+      error: result.error || "Unknown generation error",
+    })
+
     return {
       ...job,
       status: "failed",
@@ -69,10 +99,25 @@ async function runJob(
     }
   }
 
-  // Upload to Vercel Blob
+  // Upload to Supabase Storage
   const ext = result.mimeType.includes("png") ? "png" : "webp"
-  const filename = generateFilename(product.id, job.imageType, ext)
-  const imageUrl = await uploadImage(result.imageBase64, result.mimeType, filename)
+  const storagePath = generateStoragePath(organizationId, product.id, job.imageType, ext)
+  const imageUrl = await uploadImage(result.imageBase64, result.mimeType, storagePath)
+
+  // Record in database
+  const generatedImageId = await createGeneratedImage({
+    organizationId,
+    productId: product.id,
+    sourceImageId,
+    parentImageId,
+    imageType: job.imageType,
+    imageUrl,
+    status: 'completed',
+    promptUsed: prompt,
+    seed,
+    temperature: promptConfig.temperature,
+    generationDurationMs: durationMs,
+  })
 
   return {
     ...job,
@@ -81,13 +126,22 @@ async function runJob(
     imageBase64: result.imageBase64,
     imageMimeType: result.mimeType,
     promptUsed: prompt,
+    generatedImageId: generatedImageId ?? undefined,
   }
 }
 
 export async function runPipeline(options: PipelineOptions): Promise<PipelineJob[]> {
-  const { product, sourceImageUrl, imageTypes, aspectRatio, imageSize, onEvent } = options
+  const {
+    product,
+    sourceImageUrl,
+    imageTypes,
+    aspectRatio,
+    imageSize,
+    organizationId,
+    sourceImageId,
+    onEvent,
+  } = options
 
-  // No special composite dependency logic — all types are treated equally
   const allTypes = [...imageTypes]
 
   const jobs: PipelineJob[] = allTypes.map((type, i) => ({
@@ -97,6 +151,13 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
   }))
 
   onEvent({ type: "batch-start", totalJobs: jobs.length })
+
+  // Create generation job record in database
+  const generationJobId = await createGenerationJob({
+    organizationId,
+    productId: product.id,
+    imageTypes: allTypes,
+  })
 
   // Fetch source image as base64
   const { base64: sourceBase64, mimeType: sourceMimeType } =
@@ -109,6 +170,7 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
   const whiteJob = jobs.find((j) => j.imageType === "white-background")
   let whiteBase64: string | null = null
   let whiteMimeType: string | null = null
+  let whiteGeneratedImageId: string | undefined
 
   if (whiteJob) {
     onEvent({ type: "job-start", jobId: whiteJob.id, imageType: whiteJob.imageType })
@@ -119,6 +181,9 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
         product,
         sourceBase64,
         sourceMimeType,
+        organizationId,
+        sourceImageId,
+        undefined,
         aspectRatio,
         imageSize
       )
@@ -126,9 +191,9 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
 
       if (whiteResult.status === "completed") {
         successCount++
-        // Store white-background output for chaining to dependent types
         whiteBase64 = whiteResult.imageBase64 || null
         whiteMimeType = whiteResult.imageMimeType || null
+        whiteGeneratedImageId = whiteResult.generatedImageId
         onEvent({
           type: "job-complete",
           jobId: whiteJob.id,
@@ -168,10 +233,12 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
     // For dependent types, use white-background output as source if available
     let jobSourceBase64 = sourceBase64
     let jobSourceMimeType = sourceMimeType
+    let parentImageId: string | undefined
 
     if (WHITE_BG_DEPENDENT_TYPES.includes(job.imageType) && whiteBase64 && whiteMimeType) {
       jobSourceBase64 = whiteBase64
       jobSourceMimeType = whiteMimeType
+      parentImageId = whiteGeneratedImageId
     }
 
     try {
@@ -180,6 +247,9 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
         product,
         jobSourceBase64,
         jobSourceMimeType,
+        organizationId,
+        sourceImageId,
+        parentImageId,
         aspectRatio,
         imageSize
       )
@@ -215,10 +285,19 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
     }
   }
 
-  // Clean up base64 data from jobs to free memory (no longer needed after upload)
+  // Clean up base64 data from jobs to free memory
   for (const job of jobs) {
     delete job.imageBase64
     delete job.imageMimeType
+  }
+
+  // Update generation job in database
+  if (generationJobId) {
+    await updateGenerationJob(generationJobId, {
+      completedImages: successCount,
+      failedImages: failedCount,
+      status: failedCount === jobs.length ? 'failed' : 'completed',
+    })
   }
 
   onEvent({ type: "batch-complete", successCount, failedCount })

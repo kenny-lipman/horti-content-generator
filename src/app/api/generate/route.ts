@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server"
 import { generateRequestSchema } from "@/lib/schemas"
-import { getProductById } from "@/lib/utils"
+import { getProductById, toLegacyProduct } from "@/lib/data/products"
 import { runPipeline } from "@/lib/generation/pipeline"
 import type { PipelineEvent } from "@/lib/generation/pipeline"
 
@@ -32,14 +32,18 @@ export async function POST(request: NextRequest) {
 
   const { productId, sourceImageUrl, imageTypes, settings } = parsed.data
 
-  // Look up product
-  const product = getProductById(productId)
-  if (!product) {
+  // Look up product from Supabase
+  const dbProduct = await getProductById(productId)
+  if (!dbProduct) {
     return Response.json(
       { error: "Product niet gevonden", code: "PRODUCT_NOT_FOUND" },
       { status: 404 }
     )
   }
+
+  // Convert to legacy format for prompt templates
+  const product = toLegacyProduct(dbProduct)
+  const organizationId = dbProduct.organization_id
 
   // Create SSE stream
   const encoder = new TextEncoder()
@@ -58,6 +62,7 @@ export async function POST(request: NextRequest) {
           imageTypes,
           aspectRatio: settings.aspectRatio,
           imageSize: settings.resolution,
+          organizationId,
           onEvent: sendEvent,
         })
       } catch (err) {

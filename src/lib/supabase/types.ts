@@ -61,6 +61,8 @@ export type CutFlowerAttributesInsert = HortiSchema['cut_flower_attributes']['In
 export type AccessoryInsert = HortiSchema['accessories']['Insert']
 export type SourceImageInsert = HortiSchema['source_images']['Insert']
 export type GeneratedImageInsert = HortiSchema['generated_images']['Insert']
+export type GenerationJobInsert = HortiSchema['generation_jobs']['Insert']
+export type GenerationJobUpdate = HortiSchema['generation_jobs']['Update']
 export type SceneTemplateInsert = HortiSchema['scene_templates']['Insert']
 export type NotificationInsert = HortiSchema['notifications']['Insert']
 
