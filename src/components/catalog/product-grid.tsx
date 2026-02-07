@@ -1,11 +1,13 @@
 "use client"
 
-import { PackageSearch } from "lucide-react"
+import Link from "next/link"
+import { PackageSearch, Plus } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { ProductCard } from "./product-card"
-import type { Product } from "@/lib/types"
+import type { ProductWithAttributes } from "@/lib/supabase/types"
 
 interface ProductGridProps {
-  products: Product[]
+  products: ProductWithAttributes[]
 }
 
 export function ProductGrid({ products }: ProductGridProps) {
@@ -15,13 +17,14 @@ export function ProductGrid({ products }: ProductGridProps) {
         <PackageSearch className="size-12 text-muted-foreground/50" strokeWidth={1.5} />
         <h3 className="mt-4 text-lg font-medium">Geen producten gevonden</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Probeer een andere zoekterm of pas de filters aan.
+          Voeg je eerste product toe of pas de filters aan.
         </p>
-        <ul className="mt-3 text-sm text-muted-foreground list-disc list-inside">
-          <li>Controleer de spelling van je zoekterm</li>
-          <li>Zoek op productnaam, SKU of VBN-code</li>
-          <li>Verwijder het categoriefilter</li>
-        </ul>
+        <Button asChild className="mt-4">
+          <Link href="/product/new">
+            <Plus className="mr-2 h-4 w-4" />
+            Product toevoegen
+          </Link>
+        </Button>
       </div>
     )
   }

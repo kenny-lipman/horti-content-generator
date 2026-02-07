@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { getProductById } from "@/lib/utils"
+import { getProductById, toLegacyProduct } from "@/lib/data/products"
 import { ProductDetailClient } from "@/components/product/product-detail-client"
 
 interface ProductPageProps {
@@ -11,7 +11,7 @@ export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
   const { id } = await params
-  const product = getProductById(id)
+  const product = await getProductById(id)
 
   if (!product) {
     return { title: "Product niet gevonden" }
@@ -24,11 +24,14 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params
-  const product = getProductById(id)
+  const product = await getProductById(id)
 
   if (!product) {
     return notFound()
   }
 
-  return <ProductDetailClient product={product} />
+  // Convert to legacy format for the existing generation pipeline
+  const legacyProduct = toLegacyProduct(product)
+
+  return <ProductDetailClient product={legacyProduct} />
 }

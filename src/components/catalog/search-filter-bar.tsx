@@ -10,22 +10,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { getCategories } from "@/lib/utils"
 
 interface SearchFilterBarProps {
   onSearchChange: (query: string) => void
   onCategoryChange: (category: string) => void
   totalCount: number
+  categories?: string[]
 }
 
 export function SearchFilterBar({
   onSearchChange,
   onCategoryChange,
   totalCount,
+  categories = [],
 }: SearchFilterBarProps) {
   const [inputValue, setInputValue] = useState("")
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const categories = getCategories()
 
   useEffect(() => {
     if (timerRef.current) {
@@ -59,19 +59,21 @@ export function SearchFilterBar({
         </div>
 
         {/* Categorie filter */}
-        <Select onValueChange={onCategoryChange} defaultValue="all">
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <SelectValue placeholder="Alle categorieën" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Alle categorieën</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category} value={category}>
-                {category}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {categories.length > 0 && (
+          <Select onValueChange={onCategoryChange} defaultValue="all">
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Alle categorieën" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle categorieën</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Resultaten teller */}
