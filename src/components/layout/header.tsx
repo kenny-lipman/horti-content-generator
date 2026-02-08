@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Leaf, Settings, Plus, LogOut } from "lucide-react"
+import { Leaf, Settings, Plus, LogOut, Images } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -11,6 +11,7 @@ import type { User } from "@supabase/supabase-js"
 
 const navItems = [
   { href: "/", label: "Catalogus" },
+  { href: "/content", label: "Content Library", icon: Images },
   { href: "/settings", label: "Instellingen", icon: Settings },
 ]
 

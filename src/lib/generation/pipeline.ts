@@ -6,6 +6,7 @@ import {
   createGenerationJob,
   updateGenerationJob,
   createGeneratedImage,
+  trackGenerationUsage,
 } from "@/lib/data/generation"
 
 export interface PipelineJob {
@@ -299,6 +300,9 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
       status: failedCount === jobs.length ? 'failed' : 'completed',
     })
   }
+
+  // Track usage for billing
+  await trackGenerationUsage(organizationId, successCount, failedCount)
 
   onEvent({ type: "batch-complete", successCount, failedCount })
 

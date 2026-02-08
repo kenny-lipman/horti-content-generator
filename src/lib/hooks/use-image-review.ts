@@ -1,17 +1,36 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useTransition } from "react"
 import type { ReviewStatus, GeneratedImage } from "@/lib/types"
+import { reviewImageAction } from "@/app/actions/images"
 
 export function useImageReview(images: GeneratedImage[]) {
   const [reviews, setReviews] = useState<Map<string, ReviewStatus>>(new Map())
+  const [isPending, startTransition] = useTransition()
 
   const setReviewStatus = useCallback((imageId: string, status: ReviewStatus) => {
+    // Optimistic update
     setReviews((prev) => {
       const next = new Map(prev)
       next.set(imageId, status)
       return next
     })
+
+    // Persist to database if the image has a database-generated ID (UUID format)
+    const isDbId = imageId.length === 36 || !imageId.startsWith('job-')
+    if (isDbId) {
+      startTransition(async () => {
+        const result = await reviewImageAction(imageId, status)
+        if (!result.success) {
+          // Rollback on failure
+          setReviews((prev) => {
+            const next = new Map(prev)
+            next.delete(imageId)
+            return next
+          })
+        }
+      })
+    }
   }, [])
 
   const approve = useCallback(
@@ -55,5 +74,6 @@ export function useImageReview(images: GeneratedImage[]) {
     approvedCount,
     rejectedCount,
     approvedImages,
+    isPending,
   }
 }
