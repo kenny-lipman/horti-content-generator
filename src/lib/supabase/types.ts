@@ -64,6 +64,8 @@ export type GeneratedImageInsert = HortiSchema['generated_images']['Insert']
 export type GenerationJobInsert = HortiSchema['generation_jobs']['Insert']
 export type GenerationJobUpdate = HortiSchema['generation_jobs']['Update']
 export type SceneTemplateInsert = HortiSchema['scene_templates']['Insert']
+export type SceneTemplateUpdate = HortiSchema['scene_templates']['Update']
+export type ProductCombinationInsert = HortiSchema['product_combinations']['Insert']
 export type NotificationInsert = HortiSchema['notifications']['Insert']
 
 // ============================================
@@ -88,6 +90,12 @@ export interface ProductWithAttributes extends Product {
 export interface ProductWithImages extends Product {
   source_images: SourceImage[]
   generated_images: GeneratedImage[]
+}
+
+export interface CombinationWithDetails extends ProductCombination {
+  products: { name: string; sku: string | null; catalog_image_url: string | null } | null
+  accessory_product: { name: string; sku: string | null; catalog_image_url: string | null } | null
+  scene_templates: { name: string; scene_type: string; thumbnail_url: string | null } | null
 }
 
 // ============================================

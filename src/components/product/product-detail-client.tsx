@@ -23,13 +23,31 @@ import { useGeneration } from "@/lib/hooks/use-generation"
 import { useImageReview } from "@/lib/hooks/use-image-review"
 import { useGrowerSettings } from "@/lib/hooks/use-grower-settings"
 import { toast } from "sonner"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { CombinationTab } from "@/components/product/combination-tab"
 import type { Product, ImageType, AspectRatio, ImageSize, GeneratedImage } from "@/lib/types"
+import type { SceneTemplate, CombinationWithDetails } from "@/lib/supabase/types"
+
+interface AccessoryOption {
+  id: string
+  name: string
+  sku: string | null
+  catalog_image_url: string | null
+}
 
 interface ProductDetailClientProps {
   product: Product
+  scenes?: SceneTemplate[]
+  accessories?: AccessoryOption[]
+  combinations?: CombinationWithDetails[]
 }
 
-export function ProductDetailClient({ product }: ProductDetailClientProps) {
+export function ProductDetailClient({
+  product,
+  scenes = [],
+  accessories = [],
+  combinations = [],
+}: ProductDetailClientProps) {
   // --- State ---
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null)
   const [selectedTypes, setSelectedTypes] = useState<ImageType[]>([])
@@ -194,141 +212,161 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
       <ProductHeader product={product} />
 
-      <StepIndicator currentStep={currentStep} completedSteps={completedSteps} />
+      <Tabs defaultValue="photos" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="photos">Foto&apos;s</TabsTrigger>
+          <TabsTrigger value="combinations">Combinaties</TabsTrigger>
+        </TabsList>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        {/* Configuratie panel - links */}
-        <div className="space-y-6 lg:col-span-3">
-          {/* Step 1: Source image */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">
-                ① {stepTitles[1].title}
-              </CardTitle>
-              <CardDescription>{stepTitles[1].description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <SourceImageSelector
-                product={product}
-                selectedImageUrl={sourceImageUrl}
-                onImageSelected={setSourceImageUrl}
-              />
-            </CardContent>
-          </Card>
+        {/* === Tab: Foto's === */}
+        <TabsContent value="photos" className="space-y-6">
+          <StepIndicator currentStep={currentStep} completedSteps={completedSteps} />
 
-          {/* Step 2: Type selection + settings (visible when source image selected) */}
-          {sourceImageUrl && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  ② {stepTitles[2].title}
-                </CardTitle>
-                <CardDescription>{stepTitles[2].description}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <ImageTypeSelector
-                  product={product}
-                  selectedTypes={selectedTypes}
-                  onTypesChange={setSelectedTypes}
-                />
-
-                <div className="border-t pt-4">
-                  <h3 className="mb-3 text-sm font-medium">Instellingen</h3>
-                  <GenerationSettings
-                    aspectRatio={aspectRatio}
-                    resolution={resolution}
-                    onAspectRatioChange={setAspectRatio}
-                    onResolutionChange={setResolution}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+            {/* Configuratie panel - links */}
+            <div className="space-y-6 lg:col-span-3">
+              {/* Step 1: Source image */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    ① {stepTitles[1].title}
+                  </CardTitle>
+                  <CardDescription>{stepTitles[1].description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <SourceImageSelector
+                    product={product}
+                    selectedImageUrl={sourceImageUrl}
+                    onImageSelected={setSourceImageUrl}
                   />
-                </div>
+                </CardContent>
+              </Card>
 
-                <GenerateButton
-                  selectedCount={selectedTypes.length}
-                  isGenerating={generation.isGenerating}
-                  disabled={!sourceImageUrl || selectedTypes.length === 0}
-                  onGenerate={handleGenerate}
+              {/* Step 2: Type selection + settings (visible when source image selected) */}
+              {sourceImageUrl && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      ② {stepTitles[2].title}
+                    </CardTitle>
+                    <CardDescription>{stepTitles[2].description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <ImageTypeSelector
+                      product={product}
+                      selectedTypes={selectedTypes}
+                      onTypesChange={setSelectedTypes}
+                    />
+
+                    <div className="border-t pt-4">
+                      <h3 className="mb-3 text-sm font-medium">Instellingen</h3>
+                      <GenerationSettings
+                        aspectRatio={aspectRatio}
+                        resolution={resolution}
+                        onAspectRatioChange={setAspectRatio}
+                        onResolutionChange={setResolution}
+                      />
+                    </div>
+
+                    <GenerateButton
+                      selectedCount={selectedTypes.length}
+                      isGenerating={generation.isGenerating}
+                      disabled={!sourceImageUrl || selectedTypes.length === 0}
+                      onGenerate={handleGenerate}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Step 3: Generation progress */}
+              {generation.isGenerating && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      ③ {stepTitles[3].title}
+                    </CardTitle>
+                    <CardDescription>{stepTitles[3].description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <GenerationProgress
+                      totalJobs={generation.totalJobs}
+                      completedJobs={generation.completedJobs}
+                      failedJobs={generation.failedJobs}
+                      currentJobs={generation.currentJobs}
+                      progress={generation.progress}
+                      results={generation.results}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Resultaten panel - rechts */}
+            <div className="space-y-6 lg:col-span-2">
+              {/* Current Floriday photos (mock) */}
+              <FloridayCurrent product={product} />
+
+              {/* Generated images with review */}
+              {completedImages.length > 0 ? (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">
+                      Gegenereerde foto&apos;s
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Klik op een foto om groot te bekijken
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <GeneratedImagesGrid
+                      images={generation.results}
+                      onApprove={review.approve}
+                      onReject={review.reject}
+                      onRegenerate={handleRegenerate}
+                      getReviewStatus={review.getStatus}
+                      onImageClick={handleImageClick}
+                    />
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Resultaten</CardTitle>
+                    <CardDescription className="text-xs">
+                      Gegenereerde foto&apos;s verschijnen hier
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 p-8 text-center text-sm text-muted-foreground">
+                      {generation.isGenerating
+                        ? "Bezig met genereren..."
+                        : "Selecteer foto-types en klik op Genereer"}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Floriday sync (when approved images exist) */}
+              {review.approvedCount > 0 && (
+                <FloridaySync
+                  approvedImages={review.approvedImages}
+                  onSyncComplete={() => setIsSynced(true)}
                 />
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </div>
+          </div>
+        </TabsContent>
 
-          {/* Step 3: Generation progress */}
-          {generation.isGenerating && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  ③ {stepTitles[3].title}
-                </CardTitle>
-                <CardDescription>{stepTitles[3].description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <GenerationProgress
-                  totalJobs={generation.totalJobs}
-                  completedJobs={generation.completedJobs}
-                  failedJobs={generation.failedJobs}
-                  currentJobs={generation.currentJobs}
-                  progress={generation.progress}
-                  results={generation.results}
-                />
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Resultaten panel - rechts */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* Current Floriday photos (mock) */}
-          <FloridayCurrent product={product} />
-
-          {/* Generated images with review */}
-          {completedImages.length > 0 ? (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">
-                  Gegenereerde foto&apos;s
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Klik op een foto om groot te bekijken
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <GeneratedImagesGrid
-                  images={generation.results}
-                  onApprove={review.approve}
-                  onReject={review.reject}
-                  onRegenerate={handleRegenerate}
-                  getReviewStatus={review.getStatus}
-                  onImageClick={handleImageClick}
-                />
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Resultaten</CardTitle>
-                <CardDescription className="text-xs">
-                  Gegenereerde foto&apos;s verschijnen hier
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 p-8 text-center text-sm text-muted-foreground">
-                  {generation.isGenerating
-                    ? "Bezig met genereren..."
-                    : "Selecteer foto-types en klik op Genereer"}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Floriday sync (when approved images exist) */}
-          {review.approvedCount > 0 && (
-            <FloridaySync
-              approvedImages={review.approvedImages}
-              onSyncComplete={() => setIsSynced(true)}
-            />
-          )}
-        </div>
-      </div>
+        {/* === Tab: Combinaties === */}
+        <TabsContent value="combinations">
+          <CombinationTab
+            product={product}
+            accessories={accessories}
+            scenes={scenes}
+            combinations={combinations}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Lightbox */}
       <ImageLightbox
