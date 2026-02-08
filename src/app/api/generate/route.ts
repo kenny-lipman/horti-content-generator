@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server"
 import { generateRequestSchema } from "@/lib/schemas"
 import { getProductById, toLegacyProduct } from "@/lib/data/products"
+import { checkUsageLimit } from "@/lib/data/billing"
 import { runPipeline } from "@/lib/generation/pipeline"
 import type { PipelineEvent } from "@/lib/generation/pipeline"
 
@@ -44,6 +45,20 @@ export async function POST(request: NextRequest) {
   // Convert to legacy format for prompt templates
   const product = toLegacyProduct(dbProduct)
   const organizationId = dbProduct.organization_id
+
+  // Check usage limit before generating
+  const usageCheck = await checkUsageLimit(organizationId)
+  if (!usageCheck.allowed) {
+    return Response.json(
+      {
+        error: `Maandlimiet bereikt (${usageCheck.used}/${usageCheck.limit} foto's). Upgrade je plan om door te gaan.`,
+        code: "USAGE_LIMIT_REACHED",
+        used: usageCheck.used,
+        limit: usageCheck.limit,
+      },
+      { status: 429 }
+    )
+  }
 
   // Create SSE stream
   const encoder = new TextEncoder()

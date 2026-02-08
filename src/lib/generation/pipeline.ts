@@ -8,6 +8,8 @@ import {
   createGeneratedImage,
   trackGenerationUsage,
 } from "@/lib/data/generation"
+import { checkUsageLimit } from "@/lib/data/billing"
+import { createNotification } from "@/lib/data/notifications"
 
 export interface PipelineJob {
   id: string
@@ -303,6 +305,47 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
 
   // Track usage for billing
   await trackGenerationUsage(organizationId, successCount, failedCount)
+
+  // Check usage limits and create notifications if needed
+  try {
+    const usage = await checkUsageLimit(organizationId)
+    if (usage.limit !== null && usage.percentage !== null) {
+      if (usage.percentage >= 100) {
+        await createNotification({
+          organizationId,
+          type: 'usage_limit_reached',
+          title: 'Maandlimiet bereikt',
+          message: `Je hebt ${usage.used}/${usage.limit} foto's gebruikt. Upgrade je plan om door te gaan met genereren.`,
+          data: { used: usage.used, limit: usage.limit },
+        })
+      } else if (usage.percentage >= 80) {
+        await createNotification({
+          organizationId,
+          type: 'usage_warning',
+          title: 'Bijna aan je limiet',
+          message: `Je hebt ${usage.used} van ${usage.limit} foto's gebruikt (${usage.percentage}%). Nog ${usage.limit - usage.used} foto's over deze maand.`,
+          data: { used: usage.used, limit: usage.limit, percentage: usage.percentage },
+        })
+      }
+    }
+  } catch (err) {
+    console.error('[pipeline] Usage notification error:', err)
+  }
+
+  // Create generation complete notification
+  if (successCount > 0) {
+    try {
+      await createNotification({
+        organizationId,
+        type: 'generation_complete',
+        title: `${successCount} foto's gegenereerd`,
+        message: `${successCount} foto's van ${product.name} zijn klaar voor beoordeling.`,
+        data: { productId: product.id, productName: product.name, successCount, failedCount },
+      })
+    } catch (err) {
+      console.error('[pipeline] Notification error:', err)
+    }
+  }
 
   onEvent({ type: "batch-complete", successCount, failedCount })
 
