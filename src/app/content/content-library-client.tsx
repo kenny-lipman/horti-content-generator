@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { useTransition } from "react"
+import { useState, useCallback, useTransition } from "react"
 import { Check, X, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,10 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { reviewImageAction } from "@/app/actions/images"
 import { toLegacyImageType } from "@/lib/data/generation-utils"
 import { IMAGE_TYPES } from "@/lib/constants"
+import { BulkDownloadButton } from "@/components/content/bulk-download-button"
 import type { ContentLibraryImage } from "@/lib/data/generation"
 
 interface ContentLibraryClientProps {
@@ -49,6 +51,24 @@ export function ContentLibraryClient({
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(initialImages.map((img) => img.id)))
+  }, [initialImages])
+
+  const deselectAll = useCallback(() => {
+    setSelectedIds(new Set())
+  }, [])
 
   function updateFilter(key: string, value: string | undefined) {
     const params = new URLSearchParams(searchParams.toString())
@@ -109,8 +129,20 @@ export function ContentLibraryClient({
           </SelectContent>
         </Select>
 
-        <div className="ml-auto text-sm text-muted-foreground">
-          {total} afbeelding{total !== 1 ? "en" : ""}
+        <div className="ml-auto flex items-center gap-3">
+          {initialImages.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs"
+              onClick={selectedIds.size === initialImages.length ? deselectAll : selectAll}
+            >
+              {selectedIds.size === initialImages.length ? "Deselecteer alles" : "Selecteer alles"}
+            </Button>
+          )}
+          <span className="text-sm text-muted-foreground">
+            {total} afbeelding{total !== 1 ? "en" : ""}
+          </span>
         </div>
       </div>
 
@@ -136,11 +168,20 @@ export function ContentLibraryClient({
                 className={cn(
                   "group overflow-hidden rounded-lg border transition-colors",
                   image.review_status === "approved" && "border-green-400",
-                  image.review_status === "rejected" && "border-red-400"
+                  image.review_status === "rejected" && "border-red-400",
+                  selectedIds.has(image.id) && "ring-2 ring-primary"
                 )}
               >
                 {/* Image */}
                 <div className="relative aspect-square bg-muted">
+                  {/* Selection checkbox */}
+                  <div className="absolute left-2 top-2 z-10">
+                    <Checkbox
+                      checked={selectedIds.has(image.id)}
+                      onCheckedChange={() => toggleSelect(image.id)}
+                      className="h-5 w-5 border-2 border-white bg-black/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                    />
+                  </div>
                   {image.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -197,6 +238,19 @@ export function ContentLibraryClient({
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Floating action bar */}
+      {selectedIds.size > 0 && (
+        <div className="sticky bottom-4 z-20 mx-auto flex w-fit items-center gap-4 rounded-lg border bg-card px-4 py-3 shadow-lg">
+          <span className="text-sm font-medium">
+            {selectedIds.size} geselecteerd
+          </span>
+          <BulkDownloadButton selectedIds={Array.from(selectedIds)} />
+          <Button variant="ghost" size="sm" onClick={deselectAll}>
+            Deselecteer
+          </Button>
         </div>
       )}
 
