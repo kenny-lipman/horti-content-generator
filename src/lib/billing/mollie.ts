@@ -1,10 +1,21 @@
 import createMollieClient, { SequenceType } from '@mollie/api-client'
 
 // ============================================
-// Mollie SDK Client
+// Mollie SDK Client (lazy initialization)
 // ============================================
 
-const mollieClient = createMollieClient({ apiKey: process.env.MOLLIE_API_KEY! })
+let _mollieClient: ReturnType<typeof createMollieClient> | null = null
+
+function getMollieClient() {
+  if (!_mollieClient) {
+    const apiKey = process.env.MOLLIE_API_KEY
+    if (!apiKey) {
+      throw new Error('MOLLIE_API_KEY is niet geconfigureerd')
+    }
+    _mollieClient = createMollieClient({ apiKey })
+  }
+  return _mollieClient
+}
 
 // ============================================
 // Customers
@@ -18,7 +29,7 @@ export async function createMollieCustomer(
   name: string,
   orgId: string
 ): Promise<string> {
-  const customer = await mollieClient.customers.create({
+  const customer = await getMollieClient().customers.create({
     name,
     email,
     metadata: { orgId },
@@ -48,7 +59,7 @@ export async function createFirstPayment(
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const webhookUrl = process.env.MOLLIE_WEBHOOK_URL || `${baseUrl}/api/billing/webhook`
 
-  const payment = await mollieClient.customerPayments.create({
+  const payment = await getMollieClient().customerPayments.create({
     customerId,
     amount: {
       currency: 'EUR',
@@ -87,7 +98,7 @@ export async function createMollieSubscription(
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const webhookUrl = process.env.MOLLIE_WEBHOOK_URL || `${baseUrl}/api/billing/webhook`
 
-  const subscription = await mollieClient.customerSubscriptions.create({
+  const subscription = await getMollieClient().customerSubscriptions.create({
     customerId,
     amount: {
       currency: 'EUR',
@@ -117,7 +128,7 @@ export async function cancelSubscription(
   subscriptionId: string
 ): Promise<boolean> {
   try {
-    await mollieClient.customerSubscriptions.cancel(subscriptionId, {
+    await getMollieClient().customerSubscriptions.cancel(subscriptionId, {
       customerId,
     })
     return true
@@ -139,7 +150,7 @@ export async function getMollieSubscription(
   subscriptionId: string
 ): Promise<unknown> {
   try {
-    const subscription = await mollieClient.customerSubscriptions.get(subscriptionId, {
+    const subscription = await getMollieClient().customerSubscriptions.get(subscriptionId, {
       customerId,
     })
     return subscription
@@ -163,7 +174,7 @@ export async function getCustomerPayments(
   description: string
 }>> {
   try {
-    const payments = await mollieClient.customerPayments.page({
+    const payments = await getMollieClient().customerPayments.page({
       customerId,
       limit,
     })
@@ -185,5 +196,5 @@ export async function getCustomerPayments(
  * Haal een betaling op bij Mollie (voor webhook verificatie).
  */
 export async function getPayment(paymentId: string) {
-  return mollieClient.payments.get(paymentId)
+  return getMollieClient().payments.get(paymentId)
 }
