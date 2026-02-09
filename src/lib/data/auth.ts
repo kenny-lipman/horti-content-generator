@@ -43,11 +43,47 @@ export async function getUserOrganizationId(): Promise<string | null> {
 /**
  * Haal de organisatie-ID op, met fallback voor development.
  * Gebruikt de echte auth als die beschikbaar is, anders de DEV_ORG_ID.
+ * In productie wordt een fout gegooid als er geen organisatie is.
  */
 export async function getOrganizationIdOrDev(): Promise<string> {
   const orgId = await getUserOrganizationId()
   if (orgId) return orgId
 
-  // Fallback voor development — zolang er geen gebruikers aan orgs zijn gekoppeld
-  return '11111111-1111-1111-1111-111111111111'
+  // Alleen in development: fallback naar dev org ID
+  if (process.env.NODE_ENV !== 'production') {
+    return '11111111-1111-1111-1111-111111111111'
+  }
+
+  throw new Error('Geen organisatie gevonden. Log opnieuw in.')
+}
+
+/**
+ * Vereis authenticatie voor API routes.
+ * Retourneert user en orgId, of gooit een Response als niet ingelogd.
+ */
+export async function requireAuth(): Promise<{
+  userId: string
+  orgId: string
+}> {
+  const user = await getCurrentUser()
+  if (!user) {
+    throw new Response(
+      JSON.stringify({ error: 'Niet ingelogd', code: 'UNAUTHORIZED' }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+
+  const orgId = await getUserOrganizationId()
+  if (!orgId) {
+    // In development: fallback
+    if (process.env.NODE_ENV !== 'production') {
+      return { userId: user.id, orgId: '11111111-1111-1111-1111-111111111111' }
+    }
+    throw new Response(
+      JSON.stringify({ error: 'Geen organisatie gevonden', code: 'NO_ORGANIZATION' }),
+      { status: 403, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+
+  return { userId: user.id, orgId }
 }

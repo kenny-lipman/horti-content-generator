@@ -100,3 +100,15 @@ export const CATEGORY_COLORS: Record<string, string> = {
   "Tropical indoor": "bg-emerald-100 text-emerald-800",
   "mediterranean outdoor": "bg-amber-100 text-amber-800",
 }
+
+export const NOTIFICATION_EMOJI: Record<string, string> = {
+  generation_complete: "\u2705",
+  generation_failed: "\u274C",
+  usage_warning: "\u26A0\uFE0F",
+  usage_limit_reached: "\uD83D\uDEAB",
+  sync_complete: "\uD83D\uDD17",
+  sync_failed: "\uD83D\uDD17",
+  import_complete: "\uD83D\uDCE5",
+  import_failed: "\uD83D\uDCE5",
+  system: "\u2139\uFE0F",
+}

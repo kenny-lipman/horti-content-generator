@@ -108,10 +108,13 @@ export async function getProducts(
   }
 
   if (search) {
-    // Zoek in naam, SKU en beschrijving
-    query = query.or(
-      `name.ilike.%${search}%,sku.ilike.%${search}%,description.ilike.%${search}%`
-    )
+    // Sanitize search: escape PostgREST special characters
+    const sanitized = search.replace(/[,().\\]/g, '')
+    if (sanitized.trim()) {
+      query = query.or(
+        `name.ilike.%${sanitized}%,sku.ilike.%${sanitized}%,description.ilike.%${sanitized}%`
+      )
+    }
   }
 
   if (category) {

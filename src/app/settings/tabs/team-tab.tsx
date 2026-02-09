@@ -67,6 +67,8 @@ export function TeamTab({ members }: TeamTabProps) {
   const [inviteRole, setInviteRole] = useState<OrgRole>("member")
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
+  const adminCount = members.filter(m => m.role === 'admin').length
+
   function handleInvite() {
     if (!inviteEmail.trim()) {
       toast.error("Vul een e-mailadres in")
@@ -243,30 +245,44 @@ export function TeamTab({ members }: TeamTabProps) {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={isPending}
-                    onClick={() => handleToggleRole(member.id, member.role)}
-                    title={
-                      member.role === "admin"
-                        ? "Wijzig naar Lid"
-                        : "Wijzig naar Admin"
-                    }
-                  >
-                    {member.role === "admin" ? (
-                      <>
-                        <User className="mr-1 size-4" />
-                        Maak lid
-                      </>
-                    ) : (
-                      <>
-                        <Shield className="mr-1 size-4" />
-                        Maak admin
-                      </>
-                    )}
-                  </Button>
+                  {/* Disable role change if this is the only admin */}
+                  {member.role === 'admin' && adminCount <= 1 ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled
+                      title="Kan rol niet wijzigen — dit is de enige admin"
+                    >
+                      <Shield className="mr-1 size-4" />
+                      Enige admin
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => handleToggleRole(member.id, member.role)}
+                      title={
+                        member.role === "admin"
+                          ? "Wijzig naar Lid"
+                          : "Wijzig naar Admin"
+                      }
+                    >
+                      {member.role === "admin" ? (
+                        <>
+                          <User className="mr-1 size-4" />
+                          Maak lid
+                        </>
+                      ) : (
+                        <>
+                          <Shield className="mr-1 size-4" />
+                          Maak admin
+                        </>
+                      )}
+                    </Button>
+                  )}
 
+                  {/* Disable remove if this is the only admin */}
                   {confirmDeleteId === member.id ? (
                     <div className="flex items-center gap-1">
                       <Button
@@ -289,9 +305,13 @@ export function TeamTab({ members }: TeamTabProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      disabled={isPending}
+                      disabled={isPending || (member.role === 'admin' && adminCount <= 1)}
                       onClick={() => setConfirmDeleteId(member.id)}
-                      title="Verwijder teamlid"
+                      title={
+                        member.role === 'admin' && adminCount <= 1
+                          ? "Kan de enige admin niet verwijderen"
+                          : "Verwijder teamlid"
+                      }
                     >
                       <Trash2 className="size-4 text-destructive" />
                     </Button>

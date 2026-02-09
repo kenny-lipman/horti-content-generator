@@ -200,7 +200,7 @@ export async function updateReviewStatus(
 
 /**
  * Track generatie-gebruik voor de huidige factureringsperiode.
- * Upsert: als er al een record is voor deze maand, verhoog de teller.
+ * Atomische upsert via RPC om race conditions te voorkomen.
  */
 export async function trackGenerationUsage(
   organizationId: string,
@@ -214,43 +214,16 @@ export async function trackGenerationUsage(
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
   const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
 
-  // Check of er al een record is voor deze periode
-  const { data: existing } = await supabase
-    .from('generation_usage')
-    .select('id, completed_count, failed_count')
-    .eq('organization_id', organizationId)
-    .eq('period_start', periodStart)
-    .single()
+  const { error } = await supabase.rpc('upsert_generation_usage' as never, {
+    p_organization_id: organizationId,
+    p_period_start: periodStart,
+    p_period_end: periodEnd,
+    p_completed_count: completedCount,
+    p_failed_count: failedCount,
+  } as never)
 
-  if (existing) {
-    // Update bestaand record
-    const { error } = await supabase
-      .from('generation_usage')
-      .update({
-        completed_count: existing.completed_count + completedCount,
-        failed_count: existing.failed_count + failedCount,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id)
-
-    if (error) {
-      console.error('[trackGenerationUsage] Update error:', error.message)
-    }
-  } else {
-    // Nieuw record aanmaken
-    const { error } = await supabase
-      .from('generation_usage')
-      .insert({
-        organization_id: organizationId,
-        period_start: periodStart,
-        period_end: periodEnd,
-        completed_count: completedCount,
-        failed_count: failedCount,
-      })
-
-    if (error) {
-      console.error('[trackGenerationUsage] Insert error:', error.message)
-    }
+  if (error) {
+    console.error('[trackGenerationUsage] RPC error:', error.message)
   }
 }
 

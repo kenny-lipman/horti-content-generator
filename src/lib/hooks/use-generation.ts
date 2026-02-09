@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import type { ImageType, GeneratedImage } from "@/lib/types"
 
 interface GenerationState {
@@ -27,6 +27,13 @@ export function useGeneration(options?: UseGenerationOptions) {
   })
 
   const abortRef = useRef<AbortController | null>(null)
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+    }
+  }, [])
 
   const startGeneration = useCallback(
     async (params: {
@@ -90,8 +97,12 @@ export function useGeneration(options?: UseGenerationOptions) {
             if (line.startsWith("event: ")) {
               eventType = line.slice(7).trim()
             } else if (line.startsWith("data: ")) {
-              const data = JSON.parse(line.slice(6))
-              handleEvent(eventType, data)
+              try {
+                const data = JSON.parse(line.slice(6))
+                handleEvent(eventType, data, params.productId)
+              } catch {
+                console.warn("[useGeneration] Failed to parse SSE data:", line.slice(6))
+              }
             }
           }
         }
@@ -106,7 +117,7 @@ export function useGeneration(options?: UseGenerationOptions) {
         }))
       }
 
-      function handleEvent(eventType: string, data: Record<string, unknown>) {
+      function handleEvent(eventType: string, data: Record<string, unknown>, productId: string) {
         switch (eventType) {
           case "batch-start":
             setState((prev) => ({
@@ -125,8 +136,8 @@ export function useGeneration(options?: UseGenerationOptions) {
 
           case "job-complete": {
             const image: GeneratedImage = {
-              id: data.jobId as string,
-              productId: "",
+              id: (data.generatedImageId as string) || (data.jobId as string),
+              productId,
               imageType: data.imageType as ImageType,
               imageUrl: data.imageUrl as string,
               status: "completed",
@@ -150,7 +161,7 @@ export function useGeneration(options?: UseGenerationOptions) {
           case "job-error": {
             const failedImage: GeneratedImage = {
               id: data.jobId as string,
-              productId: "",
+              productId,
               imageType: data.imageType as ImageType,
               imageUrl: "",
               status: "failed",

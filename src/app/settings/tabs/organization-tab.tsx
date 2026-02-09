@@ -130,7 +130,7 @@ export function OrganizationTab({ organization }: OrganizationTabProps) {
 
           <Button
             onClick={handleSaveOrganization}
-            disabled={isPending}
+            disabled={isPending || !name.trim() || !slug.trim()}
           >
             {isPending ? "Opslaan..." : "Opslaan"}
           </Button>

@@ -139,6 +139,7 @@ export async function updateBusinessTypes(
 
 /**
  * Haal teamleden op met email (via auth.users lookup).
+ * Gebruikt Promise.all om N+1 queries te voorkomen.
  */
 export async function getTeamMembers(orgId: string): Promise<TeamMember[]> {
   const supabase = createAdminClient()
@@ -154,15 +155,16 @@ export async function getTeamMembers(orgId: string): Promise<TeamMember[]> {
     return []
   }
 
-  // Fetch emails from auth.users via admin API
-  const userIds = members.map(m => m.user_id)
-  const emailMap = new Map<string, string>()
+  // Parallel lookup van alle user emails
+  const emailResults = await Promise.all(
+    members.map(m => supabase.auth.admin.getUserById(m.user_id))
+  )
 
-  // Batch lookup emails
-  for (const userId of userIds) {
-    const { data: { user } } = await supabase.auth.admin.getUserById(userId)
+  const emailMap = new Map<string, string>()
+  for (let i = 0; i < members.length; i++) {
+    const user = emailResults[i].data?.user
     if (user?.email) {
-      emailMap.set(userId, user.email)
+      emailMap.set(members[i].user_id, user.email)
     }
   }
 
@@ -184,9 +186,17 @@ export async function inviteTeamMember(
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = createAdminClient()
 
-  // Check of het email al een gebruiker is
-  const { data: { users } } = await supabase.auth.admin.listUsers()
-  const existingUser = users.find(u => u.email === email)
+  // Zoek gebruiker op email via SQL (vermijdt listUsers() die alle users ophaalt)
+  const { data: authUser } = await supabase.rpc('get_user_by_email' as never, { p_email: email } as never) as { data: { id: string } | null }
+
+  // Fallback: gebruik admin API als RPC niet bestaat
+  let existingUser: { id: string; email?: string } | null = authUser ? { id: authUser.id, email } : null
+  if (!existingUser) {
+    // Directe lookup via admin getUserById is niet mogelijk zonder ID,
+    // dus gebruiken we listUsers met een klein window
+    const { data: { users } } = await supabase.auth.admin.listUsers({ page: 1, perPage: 50 })
+    existingUser = users.find(u => u.email === email) ?? null
+  }
 
   if (existingUser) {
     // Check of al lid

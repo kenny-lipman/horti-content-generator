@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { updateReviewStatus } from '@/lib/data/generation'
-import { getCurrentUser } from '@/lib/data/auth'
+import { getCurrentUser, getOrganizationIdOrDev } from '@/lib/data/auth'
+import { createAdminClient } from '@/lib/supabase/server'
 
 type ReviewResult =
   | { success: true }
@@ -10,6 +11,7 @@ type ReviewResult =
 
 /**
  * Update de review status van een gegenereerde afbeelding.
+ * Verifieer dat de afbeelding bij de organisatie van de gebruiker hoort.
  */
 export async function reviewImageAction(
   imageId: string,
@@ -20,6 +22,21 @@ export async function reviewImageAction(
   }
 
   const user = await getCurrentUser()
+  const orgId = await getOrganizationIdOrDev()
+
+  // Verify image belongs to user's organization
+  const supabase = createAdminClient()
+  const { data: image } = await supabase
+    .from('generated_images')
+    .select('id')
+    .eq('id', imageId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!image) {
+    return { success: false, error: 'Afbeelding niet gevonden' }
+  }
+
   const success = await updateReviewStatus(imageId, reviewStatus, user?.id)
 
   if (!success) {
@@ -41,9 +58,26 @@ export async function batchReviewAction(
     return { success: false, error: 'Geen afbeeldingen geselecteerd' }
   }
 
-  const user = await getCurrentUser()
-  let failed = 0
+  if (imageIds.length > 100) {
+    return { success: false, error: 'Maximaal 100 afbeeldingen tegelijk' }
+  }
 
+  const user = await getCurrentUser()
+  const orgId = await getOrganizationIdOrDev()
+
+  // Verify all images belong to user's organization
+  const supabase = createAdminClient()
+  const { count } = await supabase
+    .from('generated_images')
+    .select('id', { count: 'exact', head: true })
+    .in('id', imageIds)
+    .eq('organization_id', orgId)
+
+  if (count !== imageIds.length) {
+    return { success: false, error: 'Niet alle afbeeldingen behoren tot je organisatie' }
+  }
+
+  let failed = 0
   for (const id of imageIds) {
     const success = await updateReviewStatus(id, reviewStatus, user?.id)
     if (!success) failed++

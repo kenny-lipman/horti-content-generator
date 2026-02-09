@@ -382,10 +382,13 @@ export async function updateProductAction(formData: FormData): Promise<ActionRes
       tags: productData.tags,
     }
 
+    const orgId = await getOrganizationIdOrDev()
+
     const { error: productError } = await supabase
       .from('products')
       .update(productUpdate)
       .eq('id', productId)
+      .eq('organization_id', orgId)
 
     if (productError) {
       console.error('Product update error:', productError)
@@ -426,11 +429,13 @@ export async function deleteProductAction(formData: FormData): Promise<ActionRes
     }
 
     const supabase = createAdminClient()
+    const orgId = await getOrganizationIdOrDev()
 
     const { error } = await supabase
       .from('products')
       .update({ is_active: false } satisfies ProductUpdate)
       .eq('id', productId)
+      .eq('organization_id', orgId)
 
     if (error) {
       console.error('Product delete error:', error)

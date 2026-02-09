@@ -21,6 +21,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { timeAgo } from "@/lib/utils"
+import { NOTIFICATION_EMOJI } from "@/lib/constants"
 import type { DashboardStats } from "@/lib/data/billing"
 import type { Notification } from "@/lib/supabase/types"
 
@@ -41,35 +43,6 @@ interface DashboardClientProps {
   stats: DashboardStats
   recentImages: RecentImage[]
   notifications: Notification[]
-}
-
-// ============================================
-// Helpers
-// ============================================
-
-function timeAgo(dateStr: string): string {
-  const now = new Date()
-  const date = new Date(dateStr)
-  const diffMs = now.getTime() - date.getTime()
-  const diffMin = Math.floor(diffMs / 60000)
-  if (diffMin < 1) return "Zojuist"
-  if (diffMin < 60) return `${diffMin}m geleden`
-  const diffHours = Math.floor(diffMin / 60)
-  if (diffHours < 24) return `${diffHours}u geleden`
-  const diffDays = Math.floor(diffHours / 24)
-  return `${diffDays}d geleden`
-}
-
-const NOTIFICATION_ICONS: Record<string, string> = {
-  generation_complete: "✅",
-  generation_failed: "❌",
-  usage_warning: "⚠️",
-  usage_limit_reached: "🚫",
-  sync_complete: "🔗",
-  sync_failed: "🔗",
-  import_complete: "📥",
-  import_failed: "📥",
-  system: "ℹ️",
 }
 
 const REVIEW_STATUS_COLORS: Record<string, string> = {
@@ -260,13 +233,12 @@ export function DashboardClient({
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex h-auto flex-col gap-2 py-4"
-                  asChild
+                  className="flex h-auto flex-col gap-2 py-4 opacity-60 cursor-not-allowed"
+                  disabled
+                  title="Binnenkort beschikbaar"
                 >
-                  <Link href="/import">
-                    <Upload className="h-5 w-5" />
-                    <span className="text-xs">Importeer Excel</span>
-                  </Link>
+                  <Upload className="h-5 w-5" />
+                  <span className="text-xs">Importeer Excel</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -285,7 +257,7 @@ export function DashboardClient({
                 >
                   <Link href="/content">
                     <Images className="h-5 w-5" />
-                    <span className="text-xs">Content library</span>
+                    <span className="text-xs">Contentbibliotheek</span>
                   </Link>
                 </Button>
               </div>
@@ -317,7 +289,7 @@ export function DashboardClient({
                       className="flex gap-3 text-sm"
                     >
                       <span className="mt-0.5 shrink-0 text-base">
-                        {NOTIFICATION_ICONS[notification.type] ?? "ℹ️"}
+                        {NOTIFICATION_EMOJI[notification.type] ?? "ℹ️"}
                       </span>
                       <div className="min-w-0 flex-1">
                         <p

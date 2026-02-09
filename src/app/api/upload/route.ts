@@ -1,8 +1,20 @@
 import { NextRequest } from "next/server"
-import { writeFile, mkdir } from "fs/promises"
-import { join } from "path"
+import { requireAuth } from "@/lib/data/auth"
+import { createAdminClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
+  // Auth check
+  let auth: { userId: string; orgId: string }
+  try {
+    auth = await requireAuth()
+  } catch (res) {
+    if (res instanceof Response) return res
+    return Response.json(
+      { error: "Authenticatie mislukt", code: "AUTH_ERROR" },
+      { status: 401 }
+    )
+  }
+
   let formData: FormData
   try {
     formData = await request.formData()
@@ -41,31 +53,33 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const blobToken = process.env.BLOB_READ_WRITE_TOKEN
-
-    // If Vercel Blob token is configured, use it
-    if (blobToken && blobToken.length > 10) {
-      const { put } = await import("@vercel/blob")
-      const filename = `uploads/${Date.now()}-${file.name}`
-      const blob = await put(filename, file, {
-        access: "public",
-        contentType: file.type,
-      })
-      return Response.json({ url: blob.url })
-    }
-
-    // Fallback: save locally to public/uploads/
-    const uploadsDir = join(process.cwd(), "public", "uploads")
-    await mkdir(uploadsDir, { recursive: true })
+    const supabase = createAdminClient()
 
     const ext = file.name.split(".").pop() || "jpg"
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-    const filepath = join(uploadsDir, filename)
+    const timestamp = Date.now()
+    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_")
+    const storagePath = `${auth.orgId}/uploads/${timestamp}-${safeName}`
 
-    const buffer = Buffer.from(await file.arrayBuffer())
-    await writeFile(filepath, buffer)
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("source-images")
+      .upload(storagePath, file, {
+        contentType: file.type,
+        upsert: false,
+      })
 
-    return Response.json({ url: `/uploads/${filename}` })
+    if (uploadError || !uploadData) {
+      console.error("Upload error:", uploadError)
+      return Response.json(
+        { error: "Upload mislukt", code: "UPLOAD_FAILED" },
+        { status: 500 }
+      )
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from("source-images")
+      .getPublicUrl(uploadData.path)
+
+    return Response.json({ url: publicUrl })
   } catch (err) {
     console.error("Upload error:", err)
     return Response.json(

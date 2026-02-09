@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createCombination } from '@/lib/data/combinations'
 import { getOrganizationIdOrDev } from '@/lib/data/auth'
+import { combinationCreateSchema } from '@/lib/schemas'
 
 type ActionResult =
   | { success: true; combinationId: string }
@@ -17,28 +18,31 @@ export async function createCombinationAction(data: {
   sceneTemplateId?: string
   notes?: string
 }): Promise<ActionResult> {
-  if (!data.productId) {
-    return { success: false, error: 'Product ID is verplicht' }
+  try {
+    const parsed = combinationCreateSchema.safeParse(data)
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0]
+      return { success: false, error: firstError?.message ?? 'Validatiefout' }
+    }
+
+    const organizationId = await getOrganizationIdOrDev()
+
+    const combinationId = await createCombination({
+      organizationId,
+      productId: parsed.data.productId,
+      accessoryId: parsed.data.accessoryId,
+      sceneTemplateId: parsed.data.sceneTemplateId,
+      notes: parsed.data.notes,
+    })
+
+    if (!combinationId) {
+      return { success: false, error: 'Fout bij het aanmaken van de combinatie' }
+    }
+
+    revalidatePath(`/product/${parsed.data.productId}`)
+    return { success: true, combinationId }
+  } catch (error) {
+    console.error('Unexpected error in createCombinationAction:', error)
+    return { success: false, error: 'Er is een onverwachte fout opgetreden' }
   }
-
-  if (!data.accessoryId) {
-    return { success: false, error: 'Selecteer een accessoire' }
-  }
-
-  const organizationId = await getOrganizationIdOrDev()
-
-  const combinationId = await createCombination({
-    organizationId,
-    productId: data.productId,
-    accessoryId: data.accessoryId,
-    sceneTemplateId: data.sceneTemplateId,
-    notes: data.notes,
-  })
-
-  if (!combinationId) {
-    return { success: false, error: 'Fout bij het aanmaken van de combinatie' }
-  }
-
-  revalidatePath(`/product/${data.productId}`)
-  return { success: true, combinationId }
 }

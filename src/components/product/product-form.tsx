@@ -647,7 +647,7 @@ export function ProductForm({
       {/* ----------------------------------------------------------------- */}
       <div className="flex items-center justify-between gap-4 pb-8">
         <Button variant="outline" asChild>
-          <Link href="/producten">
+          <Link href="/">
             <ArrowLeft className="mr-2 size-4" />
             Terug
           </Link>

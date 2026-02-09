@@ -5,6 +5,7 @@ import { generateImage, imageUrlToBase64 } from "@/lib/gemini/client"
 import { buildPrompt, getPromptConfig, getSeed } from "@/lib/gemini/prompts"
 import { uploadImage, generateStoragePath } from "@/lib/storage/images"
 import { createGeneratedImage } from "@/lib/data/generation"
+import { requireAuth } from "@/lib/data/auth"
 import type { ImageType } from "@/lib/types"
 
 const regenerateSchema = z.object({
@@ -27,6 +28,18 @@ const regenerateSchema = z.object({
 export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
+  // Auth check
+  let auth: { userId: string; orgId: string }
+  try {
+    auth = await requireAuth()
+  } catch (res) {
+    if (res instanceof Response) return res
+    return Response.json(
+      { error: "Authenticatie mislukt", code: "AUTH_ERROR" },
+      { status: 401 }
+    )
+  }
+
   let body: unknown
   try {
     body = await request.json()
@@ -53,6 +66,14 @@ export async function POST(request: NextRequest) {
     return Response.json(
       { error: "Product niet gevonden", code: "PRODUCT_NOT_FOUND" },
       { status: 404 }
+    )
+  }
+
+  // Verify product belongs to user's organization
+  if (dbProduct.organization_id !== auth.orgId) {
+    return Response.json(
+      { error: "Geen toegang tot dit product", code: "FORBIDDEN" },
+      { status: 403 }
     )
   }
 
@@ -111,7 +132,7 @@ export async function POST(request: NextRequest) {
     const imageUrl = await uploadImage(result.imageBase64, result.mimeType, storagePath)
 
     // Record in database
-    await createGeneratedImage({
+    const generatedImageId = await createGeneratedImage({
       organizationId,
       productId,
       imageType,
@@ -123,7 +144,7 @@ export async function POST(request: NextRequest) {
       generationDurationMs: durationMs,
     })
 
-    return Response.json({ imageUrl, imageType })
+    return Response.json({ imageUrl, imageType, generatedImageId })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
     return Response.json(

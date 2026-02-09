@@ -7,6 +7,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function timeAgo(dateStr: string): string {
+  const now = new Date()
+  const date = new Date(dateStr)
+  const diffMs = now.getTime() - date.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return "Zojuist"
+  if (diffMin < 60) return `${diffMin}m geleden`
+  const diffHours = Math.floor(diffMin / 60)
+  if (diffHours < 24) return `${diffHours}u geleden`
+  const diffDays = Math.floor(diffHours / 24)
+  return `${diffDays}d geleden`
+}
+
 // Cast the JSON data to typed products
 const typedProducts = products as Product[]
 

@@ -20,6 +20,15 @@ const SCENE_ICONS: Record<string, typeof Home> = {
 }
 
 export function SceneSelector({ scenes, selectedId, onSelect }: SceneSelectorProps) {
+  if (scenes.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-6">
+        <Sparkles className="mb-2 h-6 w-6 text-muted-foreground/40" />
+        <p className="text-xs text-muted-foreground">Geen scenes beschikbaar</p>
+      </div>
+    )
+  }
+
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
       {scenes.map((scene) => {

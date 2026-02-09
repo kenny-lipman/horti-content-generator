@@ -1,6 +1,7 @@
 'use server'
 
 import { getOrganizationIdOrDev } from '@/lib/data/auth'
+import { createAdminClient } from '@/lib/supabase/server'
 import {
   getNotifications,
   getUnreadCount,
@@ -19,6 +20,24 @@ export async function getUnreadCountAction(): Promise<number> {
 }
 
 export async function markAsReadAction(notificationId: string): Promise<{ success: boolean }> {
+  if (!notificationId) {
+    return { success: false }
+  }
+
+  // Verify notification belongs to user's organization
+  const orgId = await getOrganizationIdOrDev()
+  const supabase = createAdminClient()
+  const { data: notification } = await supabase
+    .from('notifications')
+    .select('id')
+    .eq('id', notificationId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!notification) {
+    return { success: false }
+  }
+
   const success = await markAsRead(notificationId)
   return { success }
 }

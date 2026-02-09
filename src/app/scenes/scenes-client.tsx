@@ -48,13 +48,22 @@ const SCENE_TYPE_LABELS: Record<string, { label: string; icon: typeof Home }> = 
 
 function SceneCard({
   scene,
-  onDelete,
+  onDeleteRequest,
+  confirmDeleteId,
+  onDeleteConfirm,
+  onCancelDelete,
+  isPending,
 }: {
   scene: SceneTemplate
-  onDelete?: (id: string) => void
+  onDeleteRequest?: (id: string) => void
+  confirmDeleteId?: string | null
+  onDeleteConfirm?: (id: string) => void
+  onCancelDelete?: () => void
+  isPending?: boolean
 }) {
   const typeInfo = SCENE_TYPE_LABELS[scene.scene_type] ?? SCENE_TYPE_LABELS.custom
   const Icon = typeInfo.icon
+  const isConfirming = confirmDeleteId === scene.id
 
   return (
     <div className="group relative overflow-hidden rounded-lg border bg-card transition-colors hover:border-primary/50">
@@ -76,18 +85,39 @@ function SceneCard({
       <div className="space-y-1 p-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-medium leading-tight">{scene.name}</h3>
-          {onDelete && (
+          {onDeleteRequest && !isConfirming && (
             <Button
               variant="ghost"
               size="sm"
               className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-              onClick={() => onDelete(scene.id)}
+              onClick={() => onDeleteRequest(scene.id)}
               title="Verwijderen"
             >
               <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
           )}
         </div>
+        {isConfirming && onDeleteConfirm && onCancelDelete && (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="destructive"
+              size="sm"
+              className="h-6 text-[10px] px-2"
+              disabled={isPending}
+              onClick={() => onDeleteConfirm(scene.id)}
+            >
+              Verwijder
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-[10px] px-2"
+              onClick={onCancelDelete}
+            >
+              Annuleer
+            </Button>
+          </div>
+        )}
         <Badge variant="secondary" className="text-[10px]">
           {typeInfo.label}
         </Badge>
@@ -105,6 +135,7 @@ export function ScenesClient({ systemScenes, customScenes }: ScenesClientProps) 
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   function handleCreate(formData: FormData) {
     startTransition(async () => {
@@ -119,11 +150,16 @@ export function ScenesClient({ systemScenes, customScenes }: ScenesClientProps) 
     })
   }
 
-  function handleDelete(sceneId: string) {
+  function handleDeleteRequest(sceneId: string) {
+    setConfirmDeleteId(sceneId)
+  }
+
+  function handleDeleteConfirm(sceneId: string) {
     startTransition(async () => {
       const result = await deleteSceneAction(sceneId)
       if (result.success) {
         toast.success("Scene verwijderd")
+        setConfirmDeleteId(null)
         router.refresh()
       } else {
         toast.error(result.error ?? "Verwijderen mislukt")
@@ -247,7 +283,11 @@ export function ScenesClient({ systemScenes, customScenes }: ScenesClientProps) 
               <SceneCard
                 key={scene.id}
                 scene={scene}
-                onDelete={handleDelete}
+                onDeleteRequest={handleDeleteRequest}
+                confirmDeleteId={confirmDeleteId}
+                onDeleteConfirm={handleDeleteConfirm}
+                onCancelDelete={() => setConfirmDeleteId(null)}
+                isPending={isPending}
               />
             ))}
           </div>

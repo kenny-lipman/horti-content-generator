@@ -4,6 +4,8 @@ import { ProductForm } from "@/components/product/product-form"
 import { createProductAction } from "@/app/actions/products"
 import { getOrganizationIdOrDev } from "@/lib/data/auth"
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: "Nieuw product - Floriday Content Generator",
 }

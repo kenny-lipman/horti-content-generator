@@ -31,6 +31,7 @@ export type PipelineEvent =
       jobId: string
       imageType: ImageType
       imageUrl: string
+      generatedImageId?: string
     }
   | { type: "job-error"; jobId: string; imageType: ImageType; error: string }
   | { type: "batch-complete"; successCount: number; failedCount: number }
@@ -202,6 +203,7 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
           jobId: whiteJob.id,
           imageType: whiteJob.imageType,
           imageUrl: whiteResult.imageUrl!,
+          generatedImageId: whiteResult.generatedImageId,
         })
       } else {
         failedCount++
@@ -265,6 +267,7 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
           jobId: job.id,
           imageType: job.imageType,
           imageUrl: result.imageUrl!,
+          generatedImageId: result.generatedImageId,
         })
       } else {
         failedCount++

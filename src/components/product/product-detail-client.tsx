@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import {
   Card,
   CardContent,
@@ -51,10 +51,18 @@ export function ProductDetailClient({
   // --- State ---
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null)
   const [selectedTypes, setSelectedTypes] = useState<ImageType[]>([])
-  const { settings } = useGrowerSettings()
+  const { settings, isLoaded: settingsLoaded } = useGrowerSettings()
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(settings.defaultAspectRatio)
   const [resolution, setResolution] = useState<ImageSize>(settings.defaultResolution)
   const [isSynced, setIsSynced] = useState(false)
+
+  // Sync settings when grower settings are loaded from localStorage
+  useEffect(() => {
+    if (settingsLoaded) {
+      setAspectRatio(settings.defaultAspectRatio)
+      setResolution(settings.defaultResolution)
+    }
+  }, [settingsLoaded, settings.defaultAspectRatio, settings.defaultResolution])
 
   // Lightbox state
   const [lightboxOpen, setLightboxOpen] = useState(false)

@@ -6,7 +6,7 @@ import { getOrganizationIdOrDev } from "@/lib/data/auth"
 import { ContentLibraryClient } from "./content-library-client"
 
 export const metadata: Metadata = {
-  title: "Content Library - Floriday Content Generator",
+  title: "Contentbibliotheek - Floriday Content Generator",
 }
 
 interface ContentPageProps {
@@ -39,7 +39,7 @@ export default async function ContentPage({ searchParams }: ContentPageProps) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Content Library</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Contentbibliotheek</h1>
         <p className="text-sm text-muted-foreground">
           Alle gegenereerde afbeeldingen — beoordeel, filter en beheer
         </p>

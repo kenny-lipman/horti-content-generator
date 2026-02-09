@@ -93,9 +93,10 @@ export function CombinationTab({
           scenePrompt,
           combinationId: result.combinationId,
         })
+        toast.success("Combinatie aangemaakt — sfeerbeeld genereren...")
+      } else {
+        toast.success("Combinatie opgeslagen. Generatie van combinatiefoto's is binnenkort beschikbaar.")
       }
-
-      toast.success("Combinatie aangemaakt — sfeerbeeld genereren...")
       router.refresh()
     })
   }

@@ -59,17 +59,18 @@ export async function getUsageSummary(organizationId: string): Promise<UsageSumm
   const planSlug = plan?.slug ?? 'none'
   const maxPhotos = plan?.max_photos ?? null
 
-  // Huidige maand
+  // Gebruik altijd de huidige maand voor period matching met trackGenerationUsage
   const now = new Date()
-  const periodStart = subscription?.current_period_start ?? new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+  const periodStart = subscription?.current_period_start ?? monthStart
   const periodEnd = subscription?.current_period_end ?? new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
 
-  // Haal usage op
+  // Haal usage op — altijd op basis van maand-start zodat het matcht met trackGenerationUsage
   const { data: usage } = await supabase
     .from('generation_usage')
     .select('completed_count')
     .eq('organization_id', organizationId)
-    .eq('period_start', periodStart)
+    .eq('period_start', monthStart)
     .single()
 
   const used = usage?.completed_count ?? 0

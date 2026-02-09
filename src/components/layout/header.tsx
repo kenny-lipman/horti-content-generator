@@ -3,17 +3,18 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
-import { Leaf, Settings, Plus, LogOut, Images, Palette, Bell } from "lucide-react"
+import { Leaf, Settings, Plus, LogOut, Images, Palette, Bell, LayoutDashboard, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
+import { cn, timeAgo } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
 import type { Notification } from "@/lib/supabase/types"
+import { NOTIFICATION_EMOJI } from "@/lib/constants"
 import {
   getNotificationsAction,
   getUnreadCountAction,
@@ -26,41 +27,12 @@ import {
 // ---------------------------------------------------------------------------
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/", label: "Catalogus" },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/", label: "Catalogus", icon: Package },
   { href: "/content", label: "Content", icon: Images },
   { href: "/scenes", label: "Scenes", icon: Palette },
   { href: "/settings", label: "Instellingen", icon: Settings },
 ]
-
-const NOTIFICATION_EMOJI: Record<string, string> = {
-  generation_complete: "\u2705",
-  generation_failed: "\u274C",
-  usage_warning: "\u26A0\uFE0F",
-  usage_limit_reached: "\uD83D\uDEAB",
-  sync_complete: "\uD83D\uDD17",
-  sync_failed: "\uD83D\uDD17",
-  import_complete: "\uD83D\uDCE5",
-  import_failed: "\uD83D\uDCE5",
-  system: "\u2139\uFE0F",
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function timeAgo(dateStr: string): string {
-  const now = new Date()
-  const date = new Date(dateStr)
-  const diffMs = now.getTime() - date.getTime()
-  const diffMin = Math.floor(diffMs / 60000)
-  if (diffMin < 1) return "Zojuist"
-  if (diffMin < 60) return `${diffMin}m geleden`
-  const diffHours = Math.floor(diffMin / 60)
-  if (diffHours < 24) return `${diffHours}u geleden`
-  const diffDays = Math.floor(diffHours / 24)
-  return `${diffDays}d geleden`
-}
 
 // ---------------------------------------------------------------------------
 // NotificationBell
