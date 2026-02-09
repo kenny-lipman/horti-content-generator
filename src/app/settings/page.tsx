@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { getOrganizationIdOrDev } from "@/lib/data/auth"
 import { getOrganization, getTeamMembers } from "@/lib/data/organization"
 import { getUsageSummary } from "@/lib/data/billing"
+import { getIntegrations, getAllSyncLogs } from "@/lib/data/integrations"
 import { SettingsClient } from "./settings-client"
 
 export const metadata = {
@@ -12,10 +13,12 @@ export const metadata = {
 export default async function SettingsPage() {
   const orgId = await getOrganizationIdOrDev()
 
-  const [organization, teamMembers, usageSummary] = await Promise.all([
+  const [organization, teamMembers, usageSummary, integrations, syncLogs] = await Promise.all([
     getOrganization(orgId),
     getTeamMembers(orgId),
     getUsageSummary(orgId),
+    getIntegrations(),
+    getAllSyncLogs(),
   ])
 
   return (
@@ -23,6 +26,8 @@ export default async function SettingsPage() {
       organization={organization}
       teamMembers={teamMembers}
       usageSummary={usageSummary}
+      integrations={integrations}
+      syncLogs={syncLogs}
     />
   )
 }

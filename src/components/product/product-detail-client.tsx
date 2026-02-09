@@ -25,8 +25,9 @@ import { useGrowerSettings } from "@/lib/hooks/use-grower-settings"
 import { toast } from "sonner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CombinationTab } from "@/components/product/combination-tab"
+import { ChannelsTab } from "@/components/product/channels-tab"
 import type { Product, ImageType, AspectRatio, ImageSize, GeneratedImage } from "@/lib/types"
-import type { SceneTemplate, CombinationWithDetails } from "@/lib/supabase/types"
+import type { SceneTemplate, CombinationWithDetails, Integration } from "@/lib/supabase/types"
 
 interface AccessoryOption {
   id: string
@@ -40,6 +41,7 @@ interface ProductDetailClientProps {
   scenes?: SceneTemplate[]
   accessories?: AccessoryOption[]
   combinations?: CombinationWithDetails[]
+  integrations?: Integration[]
 }
 
 export function ProductDetailClient({
@@ -47,6 +49,7 @@ export function ProductDetailClient({
   scenes = [],
   accessories = [],
   combinations = [],
+  integrations = [],
 }: ProductDetailClientProps) {
   // --- State ---
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null)
@@ -224,6 +227,7 @@ export function ProductDetailClient({
         <TabsList>
           <TabsTrigger value="photos">Foto&apos;s</TabsTrigger>
           <TabsTrigger value="combinations">Combinaties</TabsTrigger>
+          <TabsTrigger value="channels">Kanalen</TabsTrigger>
         </TabsList>
 
         {/* === Tab: Foto's === */}
@@ -372,6 +376,14 @@ export function ProductDetailClient({
             accessories={accessories}
             scenes={scenes}
             combinations={combinations}
+          />
+        </TabsContent>
+
+        {/* === Tab: Kanalen === */}
+        <TabsContent value="channels">
+          <ChannelsTab
+            productId={product.id}
+            integrations={integrations}
           />
         </TabsContent>
       </Tabs>
