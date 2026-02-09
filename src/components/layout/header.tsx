@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
-import { Leaf, Settings, Plus, LogOut, Images, Palette, Bell, LayoutDashboard, Package } from "lucide-react"
+import { Leaf, Settings, Plus, LogOut, Images, Palette, Bell, LayoutDashboard, Package, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -31,6 +31,7 @@ const navItems = [
   { href: "/", label: "Catalogus", icon: Package },
   { href: "/content", label: "Content", icon: Images },
   { href: "/scenes", label: "Scenes", icon: Palette },
+  { href: "/import", label: "Import", icon: Upload },
   { href: "/settings", label: "Instellingen", icon: Settings },
 ]
 

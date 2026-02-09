@@ -61,3 +61,18 @@ export const combinationCreateSchema = z.object({
   sceneTemplateId: z.string().uuid('Ongeldig scene template ID').optional(),
   notes: z.string().max(500, 'Notitie mag maximaal 500 tekens zijn').optional(),
 })
+
+// ============================================
+// Import Schemas
+// ============================================
+
+export const importUploadSchema = z.object({
+  file: z.instanceof(File).refine(
+    (f) => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'].includes(f.type),
+    { message: 'Alleen Excel bestanden (.xlsx, .xls) zijn toegestaan' }
+  ).refine(
+    (f) => f.size <= 10 * 1024 * 1024,
+    { message: 'Bestand mag niet groter zijn dan 10MB' }
+  ),
+  templateId: z.string().uuid('Ongeldig template ID'),
+})

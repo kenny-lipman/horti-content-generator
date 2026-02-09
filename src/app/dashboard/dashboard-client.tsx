@@ -233,12 +233,13 @@ export function DashboardClient({
                 </Button>
                 <Button
                   variant="outline"
-                  className="flex h-auto flex-col gap-2 py-4 opacity-60 cursor-not-allowed"
-                  disabled
-                  title="Binnenkort beschikbaar"
+                  className="flex h-auto flex-col gap-2 py-4"
+                  asChild
                 >
-                  <Upload className="h-5 w-5" />
-                  <span className="text-xs">Importeer Excel</span>
+                  <Link href="/import">
+                    <Upload className="h-5 w-5" />
+                    <span className="text-xs">Importeer Excel</span>
+                  </Link>
                 </Button>
                 <Button
                   variant="outline"
