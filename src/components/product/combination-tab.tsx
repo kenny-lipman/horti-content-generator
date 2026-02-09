@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Sparkles, Package } from "lucide-react"
+import Image from "next/image"
+import { Sparkles, Package, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -38,11 +39,6 @@ interface CombinationTabProps {
   accessories: AccessoryOption[]
   scenes: SceneTemplate[]
   combinations: CombinationWithDetails[]
-  onGenerateCombination?: (params: {
-    accessoryName: string
-    scenePrompt: string
-    combinationId: string
-  }) => void
 }
 
 export function CombinationTab({
@@ -50,10 +46,11 @@ export function CombinationTab({
   accessories,
   scenes,
   combinations,
-  onGenerateCombination,
 }: CombinationTabProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
   const [selectedAccessoryId, setSelectedAccessoryId] = useState<string>("")
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null)
   const [customPrompt, setCustomPrompt] = useState("")
@@ -80,24 +77,42 @@ export function CombinationTab({
         return
       }
 
-      // 2. Start generatie
+      // 2. Start echte generatie via API
       const scenePrompt = useCustom
         ? customPrompt.trim()
         : selectedScene?.prompt_template ?? ''
 
-      const accessoryName = selectedAccessory?.name ?? 'accessoire'
+      setIsGenerating(true)
+      setGeneratedImageUrl(null)
 
-      if (onGenerateCombination) {
-        onGenerateCombination({
-          accessoryName,
-          scenePrompt,
-          combinationId: result.combinationId,
+      try {
+        const response = await fetch('/api/generate/combination', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productId: product.id,
+            accessoryId: selectedAccessoryId,
+            scenePrompt,
+            combinationId: result.combinationId,
+            aspectRatio: '1:1',
+          }),
         })
-        toast.success("Combinatie aangemaakt — sfeerbeeld genereren...")
-      } else {
-        toast.success("Combinatie opgeslagen. Generatie van combinatiefoto's is binnenkort beschikbaar.")
+
+        const data = await response.json()
+
+        if (!response.ok || !data.success) {
+          toast.error(data.error ?? 'Generatie mislukt')
+          return
+        }
+
+        setGeneratedImageUrl(data.imageUrl)
+        toast.success(`Combinatiefoto gegenereerd (${Math.round(data.durationMs / 1000)}s)`)
+        router.refresh()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Onbekende fout')
+      } finally {
+        setIsGenerating(false)
       }
-      router.refresh()
     })
   }
 
@@ -210,12 +225,48 @@ export function CombinationTab({
           {/* Generate button */}
           <Button
             className="w-full"
-            disabled={!canGenerate || isPending}
+            disabled={!canGenerate || isPending || isGenerating}
             onClick={handleGenerateCombination}
           >
-            <Sparkles className="mr-2 h-4 w-4" />
-            {isPending ? "Bezig..." : "Sfeerbeeld maken"}
+            {isGenerating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sfeerbeeld genereren...
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-2 h-4 w-4" />
+                {isPending ? "Bezig..." : "Sfeerbeeld maken"}
+              </>
+            )}
           </Button>
+
+          {/* Generation result */}
+          {isGenerating && (
+            <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+              <p className="mt-2 text-sm text-muted-foreground">
+                AI genereert je combinatiefoto... Dit kan tot 2 minuten duren.
+              </p>
+            </div>
+          )}
+
+          {generatedImageUrl && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Resultaat</p>
+              <div className="relative aspect-square overflow-hidden rounded-lg border">
+                <Image
+                  src={generatedImageUrl}
+                  alt={`${product.name} combinatie`}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Beoordeel de foto in de contentbibliotheek
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

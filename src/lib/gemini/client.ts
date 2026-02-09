@@ -1,4 +1,5 @@
 import type {
+  GeminiPart,
   GeminiRequest,
   GeminiResponse,
   GenerateImageOptions,
@@ -202,6 +203,116 @@ export async function generateImage(
     success: false,
     error: "Max retries exceeded",
   }
+}
+
+/**
+ * Generate an image using multiple source images (for combinations).
+ * Sends multiple inlineData parts to Gemini.
+ */
+export async function generateImageMultiSource(options: {
+  prompt: string
+  sourceImages: Array<{ base64: string; mimeType: string }>
+  aspectRatio?: string
+  temperature?: number
+  seed?: number
+}): Promise<GenerateImageResult> {
+  const { prompt, sourceImages, aspectRatio, temperature, seed } = options
+
+  const parts: GeminiPart[] = [
+    ...sourceImages.map((img) => ({
+      inlineData: {
+        mimeType: img.mimeType,
+        data: img.base64,
+      },
+    })),
+    { text: prompt },
+  ]
+
+  const requestBody: GeminiRequest = {
+    contents: [{ parts }],
+    systemInstruction: {
+      parts: [{ text: SYSTEM_INSTRUCTION }],
+    },
+    generationConfig: {
+      responseModalities: ["Text", "Image"],
+      ...(temperature !== undefined && { temperature }),
+      ...(seed !== undefined && { seed }),
+      imageConfig: {
+        ...(aspectRatio && { aspectRatio }),
+        personGeneration: "DONT_ALLOW",
+      },
+    },
+    safetySettings: SAFETY_SETTINGS,
+  }
+
+  const timeout = RETRY_CONFIG.timeout
+  const apiKey = getApiKey()
+  const url = `${GEMINI_ENDPOINT}?key=${apiKey}`
+
+  for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        if (isRetryableError(response.status) && attempt < RETRY_CONFIG.maxRetries) {
+          const delay = getRetryDelay(attempt)
+          console.warn(`Gemini API returned ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries})`)
+          await sleep(delay)
+          continue
+        }
+        const errorBody = await response.text().catch(() => "Unknown error")
+        return { success: false, error: `Gemini API error ${response.status}: ${errorBody}` }
+      }
+
+      const data: GeminiResponse = await response.json()
+
+      if (data.error) {
+        return { success: false, error: `Gemini API error: ${data.error.message}` }
+      }
+
+      if (!data.candidates || data.candidates.length === 0) {
+        return { success: false, error: "Gemini API returned no candidates" }
+      }
+
+      const candidate = data.candidates[0]
+      for (const part of candidate.content.parts) {
+        if ("inlineData" in part && part.inlineData) {
+          return {
+            success: true,
+            imageBase64: part.inlineData.data,
+            mimeType: part.inlineData.mimeType,
+          }
+        }
+      }
+
+      return { success: false, error: "Gemini API response did not contain an image" }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        if (attempt < RETRY_CONFIG.maxRetries) {
+          await sleep(getRetryDelay(attempt))
+          continue
+        }
+        return { success: false, error: `Gemini API timed out after ${timeout / 1000}s` }
+      }
+      if (attempt < RETRY_CONFIG.maxRetries) {
+        await sleep(getRetryDelay(attempt))
+        continue
+      }
+      return { success: false, error: err instanceof Error ? err.message : "Unknown error" }
+    }
+  }
+
+  return { success: false, error: "Max retries exceeded" }
 }
 
 /**

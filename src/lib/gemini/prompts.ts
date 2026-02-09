@@ -274,6 +274,43 @@ export function getPromptConfig(imageType: ImageType): {
 }
 
 /**
+ * Build a combination prompt for a plant + accessory in a scene.
+ * Used with multi-source Gemini request (plant image + accessory image).
+ */
+export function buildCombinationPrompt(
+  plant: Product,
+  accessory: { name: string; type?: string; material?: string; color?: string },
+  scenePrompt: string
+): string {
+  const plantName = getPlantDisplayName(plant.name)
+  const accDesc = [
+    accessory.name,
+    accessory.material && `made of ${accessory.material}`,
+    accessory.color && `in ${accessory.color}`,
+  ].filter(Boolean).join(', ')
+
+  return `${STYLE_PREAMBLE}
+
+Create a professional lifestyle photograph combining these two products:
+
+PLANT (first image): ${plantName}, ${plant.plantHeight}cm tall, currently in a ${plant.potDiameter}cm nursery pot.
+ACCESSORY (second image): ${accDesc}.
+
+Remove the plant from its nursery pot and place it IN the accessory (if it's a pot, vase, or container) or NEXT TO the accessory (if it's a stand, decoration, or packaging). The combination should look natural and commercially appealing.
+
+SCENE INSTRUCTIONS:
+${scenePrompt}
+
+IMPORTANT RULES:
+- The plant must maintain its exact appearance, proportions, and foliage from the first source image
+- The accessory must maintain its exact appearance, material, and color from the second source image
+- The combination should look like a real product photo — not composited or artificial
+- Professional lighting consistent with a high-end product catalog
+- Both products are the focal point of the scene
+- Ensure realistic scale: the plant height (${plant.plantHeight}cm) and pot diameter (${plant.potDiameter}cm) should guide how the plant fits with the accessory`
+}
+
+/**
  * Get the raw prompt template string for an image type (for preview/debugging).
  * Renders the template with a placeholder product.
  */
