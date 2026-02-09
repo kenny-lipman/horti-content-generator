@@ -1,6 +1,7 @@
 "use client"
 
-import { Camera, TrendingUp, Crown, Building2, Check } from "lucide-react"
+import { useState } from "react"
+import { Camera, TrendingUp, Crown, Building2, Check, Loader2, CreditCard } from "lucide-react"
 import {
   Card,
   CardContent,
@@ -10,6 +11,14 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import type { UsageSummary } from "@/lib/data/billing"
 import type { LucideIcon } from "lucide-react"
 
@@ -125,11 +134,84 @@ export function BillingTab({ usageSummary }: BillingTabProps) {
     periodEnd,
   } = usageSummary
 
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
   const currentTier = getPlanTier(planSlug)
   const isUnlimited = limit === null
 
+  // ----------------------------------------
+  // Upgrade handler
+  // ----------------------------------------
+  async function handleUpgrade(slug: string) {
+    setLoadingPlan(slug)
+    setError(null)
+
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planSlug: slug }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || "Er ging iets mis")
+        return
+      }
+
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl
+      }
+    } catch (err) {
+      console.error("Checkout error:", err)
+      setError("Er ging iets mis bij het starten van de betaling")
+    } finally {
+      setLoadingPlan(null)
+    }
+  }
+
+  // ----------------------------------------
+  // Cancel handler
+  // ----------------------------------------
+  async function handleCancel() {
+    setCancelling(true)
+    setError(null)
+
+    try {
+      const res = await fetch("/api/billing/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || "Annulering mislukt")
+        return
+      }
+
+      // Herlaad de pagina om de nieuwe status te tonen
+      window.location.reload()
+    } catch (err) {
+      console.error("Cancel error:", err)
+      setError("Er ging iets mis bij het annuleren")
+    } finally {
+      setCancelling(false)
+      setShowCancelDialog(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* Error melding */}
+      {error && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
       {/* Huidig abonnement */}
       <Card>
         <CardHeader>
@@ -171,6 +253,22 @@ export function BillingTab({ usageSummary }: BillingTabProps) {
               )}
             </div>
           </div>
+
+          {/* Annuleer knop voor huidige abonnement */}
+          {planSlug !== "none" && (
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={() => setShowCancelDialog(true)}
+                disabled={cancelling}
+              >
+                {cancelling && <Loader2 className="mr-2 size-4 animate-spin" />}
+                Abonnement annuleren
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -190,6 +288,7 @@ export function BillingTab({ usageSummary }: BillingTabProps) {
               const isUpgrade = planTier > currentTier
               const isEnterprise = plan.slug === "enterprise"
               const Icon = plan.icon
+              const isLoading = loadingPlan === plan.slug
 
               return (
                 <div
@@ -246,10 +345,35 @@ export function BillingTab({ usageSummary }: BillingTabProps) {
                       Contact
                     </Button>
                   ) : isUpgrade ? (
-                    <Button className="w-full">Upgrade</Button>
+                    <Button
+                      className="w-full"
+                      onClick={() => handleUpgrade(plan.slug)}
+                      disabled={isLoading || loadingPlan !== null}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 size-4 animate-spin" />
+                          Bezig...
+                        </>
+                      ) : (
+                        "Upgrade"
+                      )}
+                    </Button>
                   ) : (
-                    <Button variant="outline" className="w-full">
-                      Downgrade
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => handleUpgrade(plan.slug)}
+                      disabled={isLoading || loadingPlan !== null}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 size-4 animate-spin" />
+                          Bezig...
+                        </>
+                      ) : (
+                        "Downgrade"
+                      )}
                     </Button>
                   )}
                 </div>
@@ -258,6 +382,61 @@ export function BillingTab({ usageSummary }: BillingTabProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Betaalgeschiedenis */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CreditCard className="size-5 text-muted-foreground" />
+            <CardTitle>Betaalgeschiedenis</CardTitle>
+          </div>
+          <CardDescription>
+            Overzicht van je recente betalingen.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Geen betalingen gevonden.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Annuleer bevestiging dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Abonnement annuleren</DialogTitle>
+            <DialogDescription>
+              Weet je zeker dat je je {planName} abonnement wilt annuleren? Je
+              hebt nog toegang tot het einde van de huidige factureringsperiode (
+              {formatDutchDate(periodEnd)}).
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowCancelDialog(false)}
+              disabled={cancelling}
+            >
+              Behouden
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancel}
+              disabled={cancelling}
+            >
+              {cancelling ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Bezig...
+                </>
+              ) : (
+                "Annuleren"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

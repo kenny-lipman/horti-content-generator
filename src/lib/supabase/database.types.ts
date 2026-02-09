@@ -1154,31 +1154,37 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          cancelled_at: string | null
           created_at: string | null
           current_period_end: string
           current_period_start: string
           id: string
           organization_id: string
+          payment_provider_id: string | null
           plan_id: string
           status: string
           updated_at: string | null
         }
         Insert: {
+          cancelled_at?: string | null
           created_at?: string | null
           current_period_end: string
           current_period_start: string
           id?: string
           organization_id: string
+          payment_provider_id?: string | null
           plan_id: string
           status?: string
           updated_at?: string | null
         }
         Update: {
+          cancelled_at?: string | null
           created_at?: string | null
           current_period_end?: string
           current_period_start?: string
           id?: string
           organization_id?: string
+          payment_provider_id?: string | null
           plan_id?: string
           status?: string
           updated_at?: string | null
