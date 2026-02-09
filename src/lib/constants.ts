@@ -112,3 +112,16 @@ export const NOTIFICATION_EMOJI: Record<string, string> = {
   import_failed: "\uD83D\uDCE5",
   system: "\u2139\uFE0F",
 }
+
+export const IMAGE_VARIANT_PURPOSES = [
+  { value: 'web', label: 'Web (1024px)', format: 'WebP' },
+  { value: 'thumbnail', label: 'Thumbnail (256px)', format: 'WebP' },
+  { value: 'print', label: 'Print (4096px)', format: 'PNG' },
+  { value: 'social_instagram_square', label: 'Instagram Vierkant', format: 'JPG' },
+  { value: 'social_instagram_portrait', label: 'Instagram Portret', format: 'JPG' },
+  { value: 'social_facebook', label: 'Facebook', format: 'JPG' },
+  { value: 'social_pinterest', label: 'Pinterest', format: 'JPG' },
+  { value: 'catalog', label: 'Catalogus (800px)', format: 'JPG' },
+] as const
+
+export const IMAGE_FORMATS = ['png', 'jpg', 'webp'] as const
