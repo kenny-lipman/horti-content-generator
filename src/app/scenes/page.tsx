@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata } from "next"
 import { getSceneTemplates } from "@/lib/data/scenes"
-import { getOrganizationIdOrDev } from "@/lib/data/auth"
+
 import { ScenesClient } from "./scenes-client"
 
 export const metadata: Metadata = {
@@ -10,8 +10,7 @@ export const metadata: Metadata = {
 }
 
 export default async function ScenesPage() {
-  const organizationId = await getOrganizationIdOrDev()
-  const scenes = await getSceneTemplates(organizationId)
+  const scenes = await getSceneTemplates()
 
   const systemScenes = scenes.filter((s) => s.is_system)
   const customScenes = scenes.filter((s) => !s.is_system)

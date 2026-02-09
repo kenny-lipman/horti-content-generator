@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { toDbImageType } from './generation-utils'
 import type {
   GenerationJobInsert,
@@ -147,7 +147,7 @@ export async function getGeneratedImagesForProduct(
   review_status: string
   created_at: string | null
 }>> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('generated_images')
@@ -175,7 +175,7 @@ export async function updateReviewStatus(
   reviewStatus: 'pending' | 'approved' | 'rejected',
   reviewedBy?: string
 ): Promise<boolean> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('generated_images')
@@ -244,7 +244,6 @@ export interface ContentLibraryImage {
 }
 
 export interface GetContentLibraryOptions {
-  organizationId?: string
   reviewStatus?: 'pending' | 'approved' | 'rejected'
   imageType?: string
   productId?: string
@@ -260,7 +259,6 @@ export async function getContentLibrary(
   options: GetContentLibraryOptions = {}
 ): Promise<{ images: ContentLibraryImage[]; total: number }> {
   const {
-    organizationId,
     reviewStatus,
     imageType,
     productId,
@@ -268,16 +266,13 @@ export async function getContentLibrary(
     pageSize = 50,
   } = options
 
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
+  // RLS filtert automatisch op organization
   let query = supabase
     .from('generated_images')
     .select('id, image_type, image_url, status, review_status, created_at, product_id, products!inner(name, sku)', { count: 'exact' })
     .eq('status', 'completed')
-
-  if (organizationId) {
-    query = query.eq('organization_id', organizationId)
-  }
 
   if (reviewStatus) {
     query = query.eq('review_status', reviewStatus)

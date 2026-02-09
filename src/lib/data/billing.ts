@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 // ============================================
 // Types
@@ -44,7 +44,7 @@ export interface DashboardStats {
  * Haal de usage summary op voor de huidige factuurperiode.
  */
 export async function getUsageSummary(organizationId: string): Promise<UsageSummary> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   // Haal subscription + plan op
   const { data: subscription } = await supabase
@@ -91,7 +91,7 @@ export async function getUsageSummary(organizationId: string): Promise<UsageSumm
  * Haal dashboard statistieken op.
  */
 export async function getDashboardStats(organizationId: string): Promise<DashboardStats> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   // Parallel: usage + approved count + pending review count + plan
   const [usageSummary, approvedResult, pendingResult] = await Promise.all([
@@ -130,7 +130,7 @@ export async function getRecentImages(organizationId: string, limit = 8): Promis
   created_at: string | null
   product_name: string
 }>> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('generated_images')

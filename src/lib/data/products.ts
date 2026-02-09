@@ -1,7 +1,6 @@
 import 'server-only'
 
-import { createAdminClient } from '@/lib/supabase/server'
-// TODO: Switch to createClient() when auth is implemented
+import { createClient } from '@/lib/supabase/server'
 import type {
   Product,
   ProductWithAttributes,
@@ -28,8 +27,6 @@ import type { Product as LegacyProduct } from '@/lib/types'
 // ============================================
 
 export interface GetProductsOptions {
-  /** Organization ID voor RLS filtering - optioneel tijdens development */
-  organizationId?: string
   /** Zoektekst op productnaam, SKU of beschrijving */
   search?: string
   /** Filter op categorie */
@@ -87,7 +84,6 @@ export async function getProducts(
   options: GetProductsOptions = {}
 ): Promise<GetProductsResult> {
   const {
-    organizationId,
     search,
     category,
     productType,
@@ -96,17 +92,13 @@ export async function getProducts(
     isActive,
   } = options
 
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   let query = supabase
     .from('products')
     .select(PRODUCT_WITH_ATTRIBUTES_SELECT, { count: 'exact' })
 
-  // Filters toepassen
-  if (organizationId) {
-    query = query.eq('organization_id', organizationId)
-  }
-
+  // Filters toepassen (RLS filtert automatisch op organization)
   if (search) {
     // Sanitize search: escape PostgREST special characters
     const sanitized = search.replace(/[,().\\]/g, '')
@@ -168,7 +160,7 @@ export async function getProducts(
 export async function getProductById(
   id: string
 ): Promise<ProductWithAttributes | null> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('products')
@@ -191,22 +183,15 @@ export async function getProductById(
  * Haal alle unieke categorieen op voor producten.
  * Optioneel gefilterd op organisatie.
  */
-export async function getCategories(
-  organizationId?: string
-): Promise<string[]> {
-  const supabase = createAdminClient()
+export async function getCategories(): Promise<string[]> {
+  const supabase = await createClient()
 
-  let query = supabase
+  const query = supabase
     .from('products')
     .select('category')
     .not('category', 'is', null)
     .eq('is_active', true)
-
-  if (organizationId) {
-    query = query.eq('organization_id', organizationId)
-  }
-
-  query = query.order('category', { ascending: true })
+    .order('category', { ascending: true })
 
   const { data, error } = await query
 
@@ -230,7 +215,7 @@ export async function getCategories(
 export async function createProduct(
   data: CreateProductData
 ): Promise<ProductWithAttributes | null> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   // Stap 1: Product aanmaken
   const { data: product, error: productError } = await supabase
@@ -317,7 +302,7 @@ export async function updateProduct(
   id: string,
   data: UpdateProductData
 ): Promise<ProductWithAttributes | null> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   // Stap 1: Product updaten (als er product data is)
   if (data.product && Object.keys(data.product).length > 0) {
@@ -493,7 +478,7 @@ export async function updateProduct(
  * Zet is_active op false in plaats van daadwerkelijk verwijderen.
  */
 export async function deleteProduct(id: string): Promise<boolean> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('products')

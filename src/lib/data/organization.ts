@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type {
   Organization,
   OrganizationMember,
@@ -38,7 +38,7 @@ export interface TeamMember {
  * Haal organisatie op met business types en modules.
  */
 export async function getOrganization(orgId: string): Promise<OrganizationWithDetails | null> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const [orgResult, typesResult, modulesResult] = await Promise.all([
     supabase
@@ -80,7 +80,7 @@ export async function updateOrganization(
     logo_url?: string | null
   }
 ): Promise<boolean> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('organizations')
@@ -265,7 +265,7 @@ export async function updateMemberRole(
   memberId: string,
   role: OrgRole
 ): Promise<boolean> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('organization_members')
@@ -284,7 +284,7 @@ export async function updateMemberRole(
  * Verwijder een teamlid.
  */
 export async function removeMember(memberId: string): Promise<boolean> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('organization_members')

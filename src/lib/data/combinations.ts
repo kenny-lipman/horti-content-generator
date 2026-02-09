@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import type {
   ProductCombinationInsert,
   CombinationWithDetails,
@@ -18,12 +18,34 @@ const COMBINATION_SELECT = `
 ` as const
 
 /**
+ * Haal een enkele combinatie op.
+ */
+export async function getCombinationById(
+  id: string
+): Promise<CombinationWithDetails | null> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('product_combinations')
+    .select(COMBINATION_SELECT)
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    console.error('[getCombinationById] Error:', error.message)
+    return null
+  }
+
+  return data as unknown as CombinationWithDetails
+}
+
+/**
  * Haal alle combinaties op voor een product.
  */
 export async function getCombinationsForProduct(
   productId: string
 ): Promise<CombinationWithDetails[]> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('product_combinations')
@@ -49,7 +71,7 @@ export async function createCombination(data: {
   sceneTemplateId?: string
   notes?: string
 }): Promise<string | null> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const insert: ProductCombinationInsert = {
     organization_id: data.organizationId,
@@ -76,23 +98,16 @@ export async function createCombination(data: {
 /**
  * Haal alle accessoire-producten op (voor de dropdown).
  */
-export async function getAccessoryProducts(
-  organizationId?: string
-): Promise<Array<{ id: string; name: string; sku: string | null; catalog_image_url: string | null }>> {
-  const supabase = createAdminClient()
+export async function getAccessoryProducts(): Promise<Array<{ id: string; name: string; sku: string | null; catalog_image_url: string | null }>> {
+  const supabase = await createClient()
 
-  let query = supabase
+  // RLS filtert automatisch op organization
+  const { data, error } = await supabase
     .from('products')
     .select('id, name, sku, catalog_image_url')
     .eq('product_type', 'accessory')
     .eq('is_active', true)
     .order('name', { ascending: true })
-
-  if (organizationId) {
-    query = query.eq('organization_id', organizationId)
-  }
-
-  const { data, error } = await query
 
   if (error) {
     console.error('[getAccessoryProducts] Error:', error.message)

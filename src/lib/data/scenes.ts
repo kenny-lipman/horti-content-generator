@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import type {
   SceneTemplate,
   SceneTemplateInsert,
@@ -14,26 +14,15 @@ import type {
 /**
  * Haal alle scene templates op: systeem + org-specifiek.
  */
-export async function getSceneTemplates(
-  organizationId?: string
-): Promise<SceneTemplate[]> {
-  const supabase = createAdminClient()
+export async function getSceneTemplates(): Promise<SceneTemplate[]> {
+  const supabase = await createClient()
 
-  let query = supabase
+  // RLS filtert automatisch: systeem templates (is_system=true) + eigen org templates
+  const { data, error } = await supabase
     .from('scene_templates')
     .select('*')
     .order('is_system', { ascending: false })
     .order('name', { ascending: true })
-
-  if (organizationId) {
-    // Systeem templates + eigen org templates
-    query = query.or(`is_system.eq.true,organization_id.eq.${organizationId}`)
-  } else {
-    // Alleen systeem templates
-    query = query.eq('is_system', true)
-  }
-
-  const { data, error } = await query
 
   if (error) {
     console.error('[getSceneTemplates] Error:', error.message)
@@ -49,7 +38,7 @@ export async function getSceneTemplates(
 export async function getSceneTemplateById(
   id: string
 ): Promise<SceneTemplate | null> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('scene_templates')
@@ -75,7 +64,7 @@ export async function createSceneTemplate(data: {
   sceneType: SceneType
   promptTemplate: string
 }): Promise<SceneTemplate | null> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const insert: SceneTemplateInsert = {
     organization_id: data.organizationId,
@@ -104,7 +93,7 @@ export async function createSceneTemplate(data: {
  * Verwijder een custom scene template (alleen eigen org).
  */
 export async function deleteSceneTemplate(id: string): Promise<boolean> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('scene_templates')

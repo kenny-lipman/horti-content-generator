@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata } from "next"
 import { getContentLibrary } from "@/lib/data/generation"
-import { getOrganizationIdOrDev } from "@/lib/data/auth"
 import { ContentLibraryClient } from "./content-library-client"
 
 export const metadata: Metadata = {
@@ -20,7 +19,6 @@ interface ContentPageProps {
 
 export default async function ContentPage({ searchParams }: ContentPageProps) {
   const params = await searchParams
-  const organizationId = await getOrganizationIdOrDev()
 
   const reviewStatus = params.review as 'pending' | 'approved' | 'rejected' | undefined
   const imageType = params.type
@@ -28,7 +26,6 @@ export default async function ContentPage({ searchParams }: ContentPageProps) {
   const page = params.page ? parseInt(params.page, 10) : 1
 
   const { images, total } = await getContentLibrary({
-    organizationId,
     reviewStatus,
     imageType,
     productId,

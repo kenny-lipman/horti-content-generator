@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { Json, Notification, NotificationInsert, NotificationType } from '@/lib/supabase/types'
 
 // ============================================
@@ -15,7 +15,7 @@ export async function getNotifications(
   options: { limit?: number; unreadOnly?: boolean } = {}
 ): Promise<Notification[]> {
   const { limit = 20, unreadOnly = false } = options
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   let query = supabase
     .from('notifications')
@@ -42,7 +42,7 @@ export async function getNotifications(
  * Tel het aantal ongelezen notificaties.
  */
 export async function getUnreadCount(organizationId: string): Promise<number> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { count, error } = await supabase
     .from('notifications')
@@ -106,7 +106,7 @@ export async function createNotification(data: {
  * Markeer een notificatie als gelezen.
  */
 export async function markAsRead(notificationId: string): Promise<boolean> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('notifications')
@@ -125,7 +125,7 @@ export async function markAsRead(notificationId: string): Promise<boolean> {
  * Markeer alle notificaties als gelezen voor een organisatie.
  */
 export async function markAllAsRead(organizationId: string): Promise<boolean> {
-  const supabase = createAdminClient()
+  const supabase = await createClient()
 
   const { error } = await supabase
     .from('notifications')
