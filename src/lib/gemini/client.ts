@@ -85,14 +85,9 @@ export async function generateImage(
             imageConfig: {
               ...(aspectRatio && { aspectRatio }),
               ...(imageSize && { imageSize }),
-              personGeneration: "DONT_ALLOW",
             },
           }
-        : {
-            imageConfig: {
-              personGeneration: "DONT_ALLOW",
-            },
-          }),
+        : {}),
     },
     safetySettings: SAFETY_SETTINGS,
   }
@@ -237,10 +232,13 @@ export async function generateImageMultiSource(options: {
       responseModalities: ["Text", "Image"],
       ...(temperature !== undefined && { temperature }),
       ...(seed !== undefined && { seed }),
-      imageConfig: {
-        ...(aspectRatio && { aspectRatio }),
-        personGeneration: "DONT_ALLOW",
-      },
+      ...(aspectRatio
+        ? {
+            imageConfig: {
+              aspectRatio,
+            },
+          }
+        : {}),
     },
     safetySettings: SAFETY_SETTINGS,
   }
@@ -322,9 +320,33 @@ export async function imageUrlToBase64(url: string): Promise<{
   base64: string
   mimeType: string
 }> {
-  const response = await fetch(url)
-  const arrayBuffer = await response.arrayBuffer()
-  const base64 = Buffer.from(arrayBuffer).toString("base64")
-  const mimeType = response.headers.get("content-type") || "image/png"
-  return { base64, mimeType }
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 30000) // 30s timeout
+
+  try {
+    const response = await fetch(url, { signal: controller.signal })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: HTTP ${response.status}`)
+    }
+
+    // Check content-length header to prevent loading huge files
+    const contentLength = response.headers.get("content-length")
+    if (contentLength && parseInt(contentLength, 10) > 50 * 1024 * 1024) {
+      throw new Error("Source image too large (max 50MB)")
+    }
+
+    const arrayBuffer = await response.arrayBuffer()
+
+    // Double-check actual size
+    if (arrayBuffer.byteLength > 50 * 1024 * 1024) {
+      throw new Error("Source image too large (max 50MB)")
+    }
+
+    const base64 = Buffer.from(arrayBuffer).toString("base64")
+    const mimeType = response.headers.get("content-type") || "image/png"
+    return { base64, mimeType }
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }

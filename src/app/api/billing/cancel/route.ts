@@ -29,8 +29,8 @@ export async function POST() {
       )
     }
 
-    // 3. Annuleer bij Mollie (als er een payment_provider_id is)
-    if (subscription.payment_provider_id) {
+    // 3. Annuleer bij Mollie (als er een payment_provider_id is en Mollie geconfigureerd is)
+    if (subscription.payment_provider_id && process.env.MOLLIE_API_KEY) {
       // Haal Mollie customer ID op
       const supabase = createAdminClient()
       const { data: org } = await supabase

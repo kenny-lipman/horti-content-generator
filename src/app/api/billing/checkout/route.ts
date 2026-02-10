@@ -44,6 +44,14 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Early check: Mollie niet geconfigureerd
+  if (!process.env.MOLLIE_API_KEY) {
+    return NextResponse.json(
+      { error: 'Betalingen zijn nog niet beschikbaar. Mollie is niet geconfigureerd.', code: 'PAYMENT_NOT_CONFIGURED' },
+      { status: 503 }
+    )
+  }
+
   try {
     // 3. Haal plan op
     const plan = await getSubscriptionPlanBySlug(planSlug)

@@ -78,33 +78,38 @@ export function FloridaySync({
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Select all toggle */}
-        <button
-          type="button"
+        <div
+          role="button"
+          tabIndex={0}
           onClick={toggleAll}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleAll() } }}
+          className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <Checkbox
             checked={
               selectedIds.size === approvedImages.length && approvedImages.length > 0
             }
+            tabIndex={-1}
           />
           <span>
             {selectedIds.size === approvedImages.length
               ? "Alles deselecteren"
               : "Alles selecteren"}
           </span>
-        </button>
+        </div>
 
         {/* Image list */}
         <div className="space-y-2">
           {approvedImages.map((img) => (
-            <button
+            <div
               key={img.id}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => toggleSelection(img.id)}
-              className="flex w-full items-center gap-3 rounded-md border p-2 text-left transition-colors hover:bg-accent/50"
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSelection(img.id) } }}
+              className="flex w-full cursor-pointer items-center gap-3 rounded-md border p-2 text-left transition-colors hover:bg-accent/50"
             >
-              <Checkbox checked={selectedIds.has(img.id)} />
+              <Checkbox checked={selectedIds.has(img.id)} tabIndex={-1} />
               <div className="size-10 shrink-0 overflow-hidden rounded border bg-muted">
                 {img.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -123,7 +128,7 @@ export function FloridaySync({
               {isSynced && selectedIds.has(img.id) && (
                 <CheckCircle2 className="ml-auto size-4 text-green-600" />
               )}
-            </button>
+            </div>
           ))}
         </div>
 

@@ -87,10 +87,16 @@ export function ProductDetailClient({
   // Review hook
   const review = useImageReview(generation.results)
 
+  const completedImages = generation.results.filter(
+    (r) => r.status === "completed"
+  )
+
   // --- Step calculation ---
+  const hasCompletedImages = completedImages.length > 0
+
   const currentStep = useMemo(() => {
     if (isSynced) return 5
-    if (generation.results.length > 0 && !generation.isGenerating) {
+    if (hasCompletedImages && !generation.isGenerating) {
       if (review.approvedCount > 0) return 5
       return 4
     }
@@ -101,7 +107,7 @@ export function ProductDetailClient({
     sourceImageUrl,
     selectedTypes.length,
     generation.isGenerating,
-    generation.results.length,
+    hasCompletedImages,
     review.approvedCount,
     isSynced,
   ])
@@ -110,14 +116,14 @@ export function ProductDetailClient({
     const steps: number[] = []
     if (sourceImageUrl) steps.push(1)
     if (selectedTypes.length > 0 && sourceImageUrl) steps.push(2)
-    if (generation.results.length > 0 && !generation.isGenerating) steps.push(3)
+    if (hasCompletedImages && !generation.isGenerating) steps.push(3)
     if (review.approvedCount > 0) steps.push(4)
     if (isSynced) steps.push(5)
     return steps
   }, [
     sourceImageUrl,
     selectedTypes.length,
-    generation.results.length,
+    hasCompletedImages,
     generation.isGenerating,
     review.approvedCount,
     isSynced,
@@ -187,10 +193,6 @@ export function ProductDetailClient({
       }
     },
     [generation.results]
-  )
-
-  const completedImages = generation.results.filter(
-    (r) => r.status === "completed"
   )
 
   // --- Step content titles ---

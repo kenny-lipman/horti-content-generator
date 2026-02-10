@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server"
 import { generateRequestSchema } from "@/lib/schemas"
 import { getProductById, toLegacyProduct } from "@/lib/data/products"
-import { checkUsageLimit } from "@/lib/data/billing"
+import { reserveUsage } from "@/lib/data/billing"
 import { requireAuth } from "@/lib/data/auth"
+import { isAllowedImageUrl } from "@/lib/storage/images"
 import { runPipeline } from "@/lib/generation/pipeline"
 import type { PipelineEvent } from "@/lib/generation/pipeline"
 
@@ -63,31 +64,28 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Validate source image URL is from our Supabase Storage
+  if (!isAllowedImageUrl(sourceImageUrl)) {
+    return Response.json(
+      { error: "Ongeldige bronafbeelding URL", code: "INVALID_SOURCE_URL" },
+      { status: 400 }
+    )
+  }
+
   // Convert to legacy format for prompt templates
   const product = toLegacyProduct(dbProduct)
   const organizationId = dbProduct.organization_id
 
-  // Check usage limit before generating (including requested count)
-  const usageCheck = await checkUsageLimit(organizationId)
+  // Atomic usage check + reservation (prevents race conditions)
+  const usageCheck = await reserveUsage(organizationId, imageTypes.length)
   if (!usageCheck.allowed) {
+    const remaining = usageCheck.limit !== null ? Math.max(usageCheck.limit - usageCheck.used, 0) : null
     return Response.json(
       {
-        error: `Maandlimiet bereikt (${usageCheck.used}/${usageCheck.limit} foto's). Upgrade je plan om door te gaan.`,
+        error: remaining === 0
+          ? `Maandlimiet bereikt (${usageCheck.used}/${usageCheck.limit} foto's). Upgrade je plan om door te gaan.`
+          : `Niet genoeg tegoed. Je hebt nog ${remaining} foto('s) over, maar vraagt er ${imageTypes.length} aan.`,
         code: "USAGE_LIMIT_REACHED",
-        used: usageCheck.used,
-        limit: usageCheck.limit,
-      },
-      { status: 429 }
-    )
-  }
-
-  // Check if requested count fits within remaining limit
-  if (usageCheck.limit !== null && usageCheck.used + imageTypes.length > usageCheck.limit) {
-    const remaining = usageCheck.limit - usageCheck.used
-    return Response.json(
-      {
-        error: `Niet genoeg tegoed. Je hebt nog ${remaining} foto('s) over, maar vraagt er ${imageTypes.length} aan.`,
-        code: "USAGE_LIMIT_EXCEEDED",
         used: usageCheck.used,
         limit: usageCheck.limit,
         remaining,

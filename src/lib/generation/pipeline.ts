@@ -6,9 +6,8 @@ import {
   createGenerationJob,
   updateGenerationJob,
   createGeneratedImage,
-  trackGenerationUsage,
 } from "@/lib/data/generation"
-import { checkUsageLimit } from "@/lib/data/billing"
+import { releaseUsage, checkUsageLimit } from "@/lib/data/billing"
 import { createNotification } from "@/lib/data/notifications"
 
 export interface PipelineJob {
@@ -306,8 +305,10 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
     })
   }
 
-  // Track usage for billing
-  await trackGenerationUsage(organizationId, successCount, failedCount)
+  // Release pre-reserved usage for failed jobs (reserveUsage already reserved all upfront)
+  if (failedCount > 0) {
+    await releaseUsage(organizationId, failedCount)
+  }
 
   // Check usage limits and create notifications if needed
   try {

@@ -186,3 +186,52 @@ export async function checkUsageLimit(organizationId: string): Promise<{
     percentage: summary.percentage,
   }
 }
+
+// ============================================
+// Atomic Usage Reservation
+// ============================================
+
+/**
+ * Atomisch usage reserveren: checkt limiet EN reserveert in één transactie.
+ * Voorkomt race conditions bij gelijktijdige generatie-requests.
+ */
+export async function reserveUsage(organizationId: string, requestedCount: number): Promise<{
+  allowed: boolean
+  used: number
+  limit: number | null
+  remaining: number | null
+}> {
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase.rpc('reserve_generation_usage' as never, {
+    p_organization_id: organizationId,
+    p_requested_count: requestedCount,
+  } as never)
+
+  if (error) {
+    console.error('[reserveUsage] RPC error:', error.message)
+    // Fallback: allow but log (don't block generation on RPC errors)
+    return { allowed: true, used: 0, limit: null, remaining: null }
+  }
+
+  const result = data as unknown as { allowed: boolean; used: number; limit: number | null; remaining: number | null }
+  return result
+}
+
+/**
+ * Geef gereserveerde usage terug bij gefaalde generaties.
+ */
+export async function releaseUsage(organizationId: string, releaseCount: number): Promise<void> {
+  const { createAdminClient } = await import('@/lib/supabase/server')
+  const supabase = createAdminClient()
+
+  const { error } = await supabase.rpc('release_generation_usage' as never, {
+    p_organization_id: organizationId,
+    p_release_count: releaseCount,
+  } as never)
+
+  if (error) {
+    console.error('[releaseUsage] RPC error:', error.message)
+  }
+}

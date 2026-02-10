@@ -3,8 +3,9 @@ import { z } from "zod"
 import { getProductById, toLegacyProduct } from "@/lib/data/products"
 import { generateImage, imageUrlToBase64 } from "@/lib/gemini/client"
 import { buildPrompt, getPromptConfig, getSeed } from "@/lib/gemini/prompts"
-import { uploadImage, generateStoragePath } from "@/lib/storage/images"
+import { uploadImage, generateStoragePath, isAllowedImageUrl } from "@/lib/storage/images"
 import { createGeneratedImage } from "@/lib/data/generation"
+import { reserveUsage, releaseUsage } from "@/lib/data/billing"
 import { requireAuth } from "@/lib/data/auth"
 import type { ImageType } from "@/lib/types"
 
@@ -77,8 +78,30 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Validate source image URL
+  if (!isAllowedImageUrl(sourceImageUrl)) {
+    return Response.json(
+      { error: "Ongeldige bronafbeelding URL", code: "INVALID_SOURCE_URL" },
+      { status: 400 }
+    )
+  }
+
   const product = toLegacyProduct(dbProduct)
   const organizationId = dbProduct.organization_id
+
+  // Atomic usage check + reservation (1 image for regenerate)
+  const usageCheck = await reserveUsage(organizationId, 1)
+  if (!usageCheck.allowed) {
+    return Response.json(
+      {
+        error: `Maandlimiet bereikt (${usageCheck.used}/${usageCheck.limit} foto's). Upgrade je plan om door te gaan.`,
+        code: "USAGE_LIMIT_REACHED",
+        used: usageCheck.used,
+        limit: usageCheck.limit,
+      },
+      { status: 429 }
+    )
+  }
 
   try {
     const startTime = Date.now()
@@ -106,6 +129,9 @@ export async function POST(request: NextRequest) {
     const durationMs = Date.now() - startTime
 
     if (!result.success || !result.imageBase64 || !result.mimeType) {
+      // Release reserved usage for failed generation
+      await releaseUsage(organizationId, 1)
+
       // Record failed generation
       await createGeneratedImage({
         organizationId,

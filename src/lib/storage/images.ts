@@ -2,6 +2,29 @@ import 'server-only'
 
 import { createAdminClient } from '@/lib/supabase/server'
 
+// Supabase Storage URL pattern whitelist
+const SUPABASE_PROJECT_ID = 'jezipswnfifwxqsmpzwr'
+const ALLOWED_HOSTS = [
+  `${SUPABASE_PROJECT_ID}.supabase.co`,
+  `${SUPABASE_PROJECT_ID}.supabase.in`,
+]
+
+/**
+ * Valideer dat een image URL van onze eigen Supabase Storage komt.
+ * Voorkomt SSRF aanvallen via sourceImageUrl.
+ */
+export function isAllowedImageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    // Must be HTTPS
+    if (parsed.protocol !== 'https:') return false
+    // Must be from our Supabase project
+    return ALLOWED_HOSTS.some((host) => parsed.hostname === host)
+  } catch {
+    return false
+  }
+}
+
 /**
  * Upload a base64 image to Supabase Storage.
  * Returns the public URL.
