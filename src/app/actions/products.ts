@@ -297,7 +297,7 @@ export async function createProductAction(formData: FormData): Promise<ActionRes
       }
     }
 
-    revalidatePath('/producten')
+    revalidatePath('/')
 
     return { success: true, productId: product.id }
   } catch (error) {
@@ -410,8 +410,8 @@ export async function updateProductAction(formData: FormData): Promise<ActionRes
       }
     }
 
-    revalidatePath('/producten')
-    revalidatePath(`/producten/${productId}`)
+    revalidatePath('/')
+    revalidatePath(`/product/${productId}`)
 
     return { success: true, productId }
   } catch (error) {
@@ -451,8 +451,8 @@ export async function deleteProductAction(formData: FormData): Promise<ActionRes
       return { success: false, error: 'Fout bij het verwijderen van het product' }
     }
 
-    revalidatePath('/producten')
-    revalidatePath(`/producten/${productId}`)
+    revalidatePath('/')
+    revalidatePath(`/product/${productId}`)
 
     return { success: true, productId }
   } catch (error) {
@@ -613,7 +613,7 @@ export async function uploadSourceImageAction(formData: FormData): Promise<Uploa
       return { success: false, error: 'Fout bij het opslaan van de afbeelding in de database' }
     }
 
-    revalidatePath(`/producten/${productId}`)
+    revalidatePath(`/product/${productId}`)
 
     return { success: true, imageId: sourceImage.id, imageUrl: publicUrl }
   } catch (error) {

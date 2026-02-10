@@ -6,7 +6,7 @@ import { reserveUsage } from "@/lib/data/billing"
 import { requireAuth } from "@/lib/data/auth"
 import { isAllowedImageUrl } from "@/lib/storage/images"
 import { runPipeline } from "@/lib/generation/pipeline"
-import { hasActiveGenerationJob } from "@/lib/data/generation"
+import { createGenerationJob } from "@/lib/data/generation"
 import type { PipelineEvent } from "@/lib/generation/pipeline"
 
 export const maxDuration = 300 // 5 minutes max for Vercel
@@ -78,9 +78,15 @@ export async function POST(request: NextRequest) {
   const product = toLegacyProduct(dbProduct)
   const organizationId = dbProduct.organization_id
 
-  // Concurrency guard: max 1 batch generation per organization
-  const isGenerating = await hasActiveGenerationJob(organizationId)
-  if (isGenerating) {
+  // Atomic concurrency guard: probeer een generation job aan te maken.
+  // De DB partial unique index (idx_one_active_job_per_org) blokkeert
+  // meerdere 'processing' jobs per organisatie.
+  const generationJobId = await createGenerationJob({
+    organizationId,
+    productId,
+    imageTypes,
+  })
+  if (!generationJobId) {
     return Response.json(
       {
         error: "Er loopt al een generatie voor je organisatie. Wacht tot deze klaar is.",
@@ -127,6 +133,7 @@ export async function POST(request: NextRequest) {
           aspectRatio: settings.aspectRatio,
           imageSize: settings.resolution,
           organizationId,
+          generationJobId,
           onEvent: sendEvent,
         })
 

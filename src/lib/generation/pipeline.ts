@@ -43,6 +43,7 @@ export interface PipelineOptions {
   imageSize?: string
   organizationId: string
   sourceImageId?: string
+  generationJobId?: string | null  // Pre-created job ID (for atomic concurrency guard)
   onEvent: (event: PipelineEvent) => void
 }
 
@@ -142,6 +143,7 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
     imageSize,
     organizationId,
     sourceImageId,
+    generationJobId: preCreatedJobId,
     onEvent,
   } = options
 
@@ -155,8 +157,8 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineJob
 
   onEvent({ type: "batch-start", totalJobs: jobs.length })
 
-  // Create generation job record in database
-  const generationJobId = await createGenerationJob({
+  // Use pre-created job ID (atomisch aangemaakt in route) of maak een nieuwe aan
+  const generationJobId = preCreatedJobId ?? await createGenerationJob({
     organizationId,
     productId: product.id,
     imageTypes: allTypes,

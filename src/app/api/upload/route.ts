@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server"
 import { requireAuth } from "@/lib/data/auth"
 import { createAdminClient } from "@/lib/supabase/server"
+import { ALLOWED_UPLOAD_MIME_TYPES, MAX_UPLOAD_FILE_SIZE } from "@/lib/constants"
 
 export async function POST(request: NextRequest) {
   // Auth check
@@ -35,7 +36,6 @@ export async function POST(request: NextRequest) {
   }
 
   // Validate file type
-  const { ALLOWED_UPLOAD_MIME_TYPES, MAX_UPLOAD_FILE_SIZE } = await import("@/lib/constants")
   if (!(ALLOWED_UPLOAD_MIME_TYPES as readonly string[]).includes(file.type)) {
     return Response.json(
       { error: "Alleen JPG, PNG en WebP zijn toegestaan", code: "INVALID_TYPE" },
