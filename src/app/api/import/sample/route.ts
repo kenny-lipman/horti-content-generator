@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server'
 import { requireAuth } from '@/lib/data/auth'
 import { getImportTemplateById } from '@/lib/data/import'
-import { generateSampleExcel } from '@/lib/excel/parser'
-import type { ColumnMapping } from '@/lib/excel/parser'
+import { generateSampleExcel, normalizeColumnMappings } from '@/lib/excel/parser'
 
 // ============================================
 // GET: Download voorbeeld Excel bestand
@@ -44,18 +43,8 @@ export async function GET(request: NextRequest) {
   const sampleData = getSampleDataForType(template.product_type)
 
   // Converteer column_mappings van DB formaat naar ColumnMapping[]
-  // DB slaat op als { dbField: excelColumn }, code verwacht [{ excelColumn, dbField }]
-  const rawMappings = template.column_mappings as unknown
-  let columnMappings: ColumnMapping[]
-
-  if (Array.isArray(rawMappings)) {
-    columnMappings = rawMappings
-  } else if (rawMappings && typeof rawMappings === 'object') {
-    columnMappings = Object.entries(rawMappings).map(([dbField, excelColumn]) => ({
-      dbField,
-      excelColumn: String(excelColumn),
-    }))
-  } else {
+  const columnMappings = normalizeColumnMappings(template.column_mappings)
+  if (!columnMappings || columnMappings.length === 0) {
     return Response.json(
       { error: 'Template heeft geen geldige kolom mappings', code: 'INVALID_MAPPINGS' },
       { status: 400 }

@@ -1,10 +1,9 @@
 import { NextRequest } from 'next/server'
 import { requireAuth } from '@/lib/data/auth'
 import { getImportTemplateById, createImportJob, updateImportJob } from '@/lib/data/import'
-import { parseExcelFile } from '@/lib/excel/parser'
+import { parseExcelFile, normalizeColumnMappings } from '@/lib/excel/parser'
 import { validateAllRows } from '@/lib/excel/validator'
 import { createAdminClient } from '@/lib/supabase/server'
-import type { ColumnMapping } from '@/lib/excel/parser'
 import type {
   PlantAttributesInsert,
   CutFlowerAttributesInsert,
@@ -93,16 +92,8 @@ export async function POST(request: NextRequest) {
   try {
     const buffer = await file.arrayBuffer()
     // Converteer column_mappings van DB formaat naar ColumnMapping[]
-    const rawMappings = template.column_mappings as unknown
-    let columnMappings: ColumnMapping[]
-    if (Array.isArray(rawMappings)) {
-      columnMappings = rawMappings
-    } else if (rawMappings && typeof rawMappings === 'object') {
-      columnMappings = Object.entries(rawMappings).map(([dbField, excelColumn]) => ({
-        dbField,
-        excelColumn: String(excelColumn),
-      }))
-    } else {
+    const columnMappings = normalizeColumnMappings(template.column_mappings)
+    if (!columnMappings || columnMappings.length === 0) {
       return Response.json(
         { error: 'Template heeft geen geldige kolom mappings', code: 'INVALID_MAPPINGS' },
         { status: 400 }

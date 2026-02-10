@@ -15,6 +15,45 @@ export interface ColumnMapping {
   transform?: (value: unknown) => unknown
 }
 
+/**
+ * Normaliseer column_mappings van database formaat naar ColumnMapping[].
+ * DB slaat op als object { dbField: "Excel Kolom" }, code verwacht array.
+ * Retourneert null als het formaat ongeldig is.
+ */
+export function normalizeColumnMappings(raw: unknown): ColumnMapping[] | null {
+  if (!raw) return null
+
+  // Al een array: valideer dat items het juiste formaat hebben
+  if (Array.isArray(raw)) {
+    const valid = raw.every(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        typeof item.excelColumn === 'string' &&
+        typeof item.dbField === 'string'
+    )
+    return valid ? raw as ColumnMapping[] : null
+  }
+
+  // Object formaat: { dbField: excelColumn }
+  if (typeof raw === 'object') {
+    try {
+      const entries = Object.entries(raw as Record<string, unknown>)
+      if (entries.length === 0) return null
+      return entries
+        .filter(([, v]) => typeof v === 'string')
+        .map(([dbField, excelColumn]) => ({
+          dbField,
+          excelColumn: String(excelColumn),
+        }))
+    } catch {
+      return null
+    }
+  }
+
+  return null
+}
+
 export interface ParsedRow {
   /** Rijnummer in het Excel bestand (1-based, exclusief header) */
   rowNumber: number
