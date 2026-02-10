@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server"
+import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { getProductById, toLegacyProduct } from "@/lib/data/products"
 import { generateImage, imageUrlToBase64 } from "@/lib/gemini/client"
@@ -169,6 +170,10 @@ export async function POST(request: NextRequest) {
       temperature: promptConfig.temperature,
       generationDurationMs: durationMs,
     })
+
+    // Revalideer zodat nieuwe image direct zichtbaar is
+    revalidatePath(`/product/${productId}`)
+    revalidatePath('/content')
 
     return Response.json({ imageUrl, imageType, generatedImageId })
   } catch (err) {

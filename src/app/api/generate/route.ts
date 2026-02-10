@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server"
+import { revalidatePath } from "next/cache"
 import { generateRequestSchema } from "@/lib/schemas"
 import { getProductById, toLegacyProduct } from "@/lib/data/products"
 import { reserveUsage } from "@/lib/data/billing"
@@ -115,6 +116,10 @@ export async function POST(request: NextRequest) {
           organizationId,
           onEvent: sendEvent,
         })
+
+        // Revalideer product- en contentpagina's zodat nieuwe images direct zichtbaar zijn
+        revalidatePath(`/product/${productId}`)
+        revalidatePath('/content')
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Unknown pipeline error"

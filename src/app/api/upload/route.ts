@@ -35,17 +35,16 @@ export async function POST(request: NextRequest) {
   }
 
   // Validate file type
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp"]
-  if (!allowedTypes.includes(file.type)) {
+  const { ALLOWED_UPLOAD_MIME_TYPES, MAX_UPLOAD_FILE_SIZE } = await import("@/lib/constants")
+  if (!(ALLOWED_UPLOAD_MIME_TYPES as readonly string[]).includes(file.type)) {
     return Response.json(
       { error: "Alleen JPG, PNG en WebP zijn toegestaan", code: "INVALID_TYPE" },
       { status: 400 }
     )
   }
 
-  // Validate file size (10MB max)
-  const maxSize = 10 * 1024 * 1024
-  if (file.size > maxSize) {
+  // Validate file size
+  if (file.size > MAX_UPLOAD_FILE_SIZE) {
     return Response.json(
       { error: "Bestand is te groot (maximaal 10MB)", code: "FILE_TOO_LARGE" },
       { status: 400 }

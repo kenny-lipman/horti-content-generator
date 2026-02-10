@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { Suspense } from "react"
 import type { Metadata } from "next"
 import { getContentLibrary } from "@/lib/data/generation"
 import { ContentLibraryClient } from "./content-library-client"
@@ -42,16 +43,18 @@ export default async function ContentPage({ searchParams }: ContentPageProps) {
         </p>
       </div>
 
-      <ContentLibraryClient
-        initialImages={images}
-        total={total}
-        currentPage={page}
-        activeFilters={{
-          reviewStatus,
-          imageType,
-          productId,
-        }}
-      />
+      <Suspense>
+        <ContentLibraryClient
+          initialImages={images}
+          total={total}
+          currentPage={page}
+          activeFilters={{
+            reviewStatus,
+            imageType,
+            productId,
+          }}
+        />
+      </Suspense>
     </div>
   )
 }

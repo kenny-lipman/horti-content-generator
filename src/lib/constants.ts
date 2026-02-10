@@ -125,3 +125,9 @@ export const IMAGE_VARIANT_PURPOSES = [
 ] as const
 
 export const IMAGE_FORMATS = ['png', 'jpg', 'webp'] as const
+
+/** Toegestane MIME types voor image uploads */
+export const ALLOWED_UPLOAD_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
+
+/** Maximale bestandsgrootte voor uploads (10 MB) */
+export const MAX_UPLOAD_FILE_SIZE = 10 * 1024 * 1024

@@ -13,8 +13,7 @@ import type {
   SourceImageInsert,
 } from '@/lib/supabase/types'
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+import { ALLOWED_UPLOAD_MIME_TYPES, MAX_UPLOAD_FILE_SIZE } from '@/lib/constants'
 
 // ============================================
 // Return types
@@ -422,7 +421,7 @@ export async function updateProductAction(formData: FormData): Promise<ActionRes
 }
 
 /**
- * Soft delete: zet is_active op false.
+ * Soft delete: zet is_active op false en ruim storage op.
  */
 export async function deleteProductAction(formData: FormData): Promise<ActionResult> {
   try {
@@ -433,6 +432,13 @@ export async function deleteProductAction(formData: FormData): Promise<ActionRes
 
     const supabase = createAdminClient()
     const orgId = await getOrganizationIdOrDev()
+
+    // Cleanup: verwijder afbeeldingen uit storage (in achtergrond, mag niet de delete blokkeren)
+    try {
+      await cleanupProductImages(supabase, productId, orgId)
+    } catch (cleanupErr) {
+      console.error('[deleteProduct] Storage cleanup error (non-blocking):', cleanupErr)
+    }
 
     const { error } = await supabase
       .from('products')
@@ -456,6 +462,81 @@ export async function deleteProductAction(formData: FormData): Promise<ActionRes
 }
 
 /**
+ * Verwijder storage bestanden van een product (source images, generated images, variants).
+ * DB records blijven bestaan als audit trail.
+ */
+async function cleanupProductImages(
+  supabase: ReturnType<typeof createAdminClient>,
+  productId: string,
+  orgId: string
+) {
+  // Haal alle image URLs op
+  const [sourceRes, generatedRes, variantRes] = await Promise.all([
+    supabase
+      .from('source_images')
+      .select('image_url')
+      .eq('product_id', productId)
+      .eq('organization_id', orgId),
+    supabase
+      .from('generated_images')
+      .select('image_url')
+      .eq('product_id', productId)
+      .eq('organization_id', orgId),
+    supabase
+      .from('image_variants')
+      .select('image_url')
+      .eq('organization_id', orgId)
+      .in(
+        'generated_image_id',
+        (await supabase
+          .from('generated_images')
+          .select('id')
+          .eq('product_id', productId)
+          .eq('organization_id', orgId)
+        ).data?.map((r) => r.id) ?? []
+      ),
+  ])
+
+  // Extract storage paths from public URLs
+  const extractPath = (url: string, bucket: string): string | null => {
+    const marker = `/storage/v1/object/public/${bucket}/`
+    const idx = url.indexOf(marker)
+    if (idx === -1) return null
+    return url.slice(idx + marker.length)
+  }
+
+  const sourcePaths = (sourceRes.data ?? [])
+    .map((r) => extractPath(r.image_url, 'source-images'))
+    .filter((p): p is string => p !== null)
+
+  const generatedPaths = (generatedRes.data ?? [])
+    .filter((r): r is typeof r & { image_url: string } => !!r.image_url)
+    .map((r) => extractPath(r.image_url, 'generated-images'))
+    .filter((p): p is string => p !== null)
+
+  const variantPaths = (variantRes.data ?? [])
+    .filter((r): r is typeof r & { image_url: string } => !!r.image_url)
+    .map((r) => extractPath(r.image_url, 'image-variants'))
+    .filter((p): p is string => p !== null)
+
+  // Verwijder in parallel per bucket
+  const deletes: Promise<unknown>[] = []
+  if (sourcePaths.length > 0) {
+    deletes.push(supabase.storage.from('source-images').remove(sourcePaths))
+  }
+  if (generatedPaths.length > 0) {
+    deletes.push(supabase.storage.from('generated-images').remove(generatedPaths))
+  }
+  if (variantPaths.length > 0) {
+    deletes.push(supabase.storage.from('image-variants').remove(variantPaths))
+  }
+
+  if (deletes.length > 0) {
+    await Promise.allSettled(deletes)
+  }
+}
+
+/**
  * Upload een bronafbeelding naar Supabase Storage en maak een source_images record.
  */
 export async function uploadSourceImageAction(formData: FormData): Promise<UploadResult> {
@@ -474,12 +555,12 @@ export async function uploadSourceImageAction(formData: FormData): Promise<Uploa
     }
 
     // Valideer bestandsgrootte
-    if (file.size > MAX_FILE_SIZE) {
-      return { success: false, error: `Bestand is te groot. Maximum is ${MAX_FILE_SIZE / 1024 / 1024} MB` }
+    if (file.size > MAX_UPLOAD_FILE_SIZE) {
+      return { success: false, error: `Bestand is te groot. Maximum is ${MAX_UPLOAD_FILE_SIZE / 1024 / 1024} MB` }
     }
 
     // Valideer bestandstype
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    if (!(ALLOWED_UPLOAD_MIME_TYPES as readonly string[]).includes(file.type)) {
       return { success: false, error: 'Ongeldig bestandstype. Gebruik JPG, PNG of WebP' }
     }
 

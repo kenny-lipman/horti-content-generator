@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { Suspense } from "react"
 import { getProducts, getCategories } from "@/lib/data/products"
 import { CatalogClient } from "@/components/catalog/catalog-client"
 
@@ -27,14 +28,16 @@ export default async function CatalogusPage({ searchParams }: PageProps) {
   ])
 
   return (
-    <CatalogClient
-      products={result.products}
-      categories={categories}
-      currentPage={result.page}
-      totalPages={result.totalPages}
-      totalCount={result.total}
-      currentSearch={search}
-      currentCategory={category}
-    />
+    <Suspense>
+      <CatalogClient
+        products={result.products}
+        categories={categories}
+        currentPage={result.page}
+        totalPages={result.totalPages}
+        totalCount={result.total}
+        currentSearch={search}
+        currentCategory={category}
+      />
+    </Suspense>
   )
 }
