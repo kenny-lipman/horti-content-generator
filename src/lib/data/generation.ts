@@ -82,6 +82,27 @@ export async function updateGenerationJob(
   }
 }
 
+/**
+ * Check of een organisatie een actieve (processing) generation job heeft.
+ * Voorkomt dat meerdere batch-generaties tegelijk draaien.
+ */
+export async function hasActiveGenerationJob(organizationId: string): Promise<boolean> {
+  const supabase = createAdminClient()
+
+  const { count, error } = await supabase
+    .from('generation_jobs')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', organizationId)
+    .eq('status', 'processing')
+
+  if (error) {
+    console.error('[hasActiveGenerationJob] Error:', error.message)
+    return false // fail open — don't block legitimate requests on DB error
+  }
+
+  return (count ?? 0) > 0
+}
+
 // ============================================
 // Generated Images
 // ============================================

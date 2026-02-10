@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, X, RotateCcw, ImageOff } from "lucide-react"
+import { Check, X, RotateCcw, ImageOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -14,6 +14,7 @@ interface GeneratedImagesGridProps {
   onRegenerate: (id: string) => void
   getReviewStatus: (id: string) => ReviewStatus
   onImageClick: (image: GeneratedImage) => void
+  regeneratingIds?: Set<string>
 }
 
 export function GeneratedImagesGrid({
@@ -23,6 +24,7 @@ export function GeneratedImagesGrid({
   onRegenerate,
   getReviewStatus,
   onImageClick,
+  regeneratingIds = new Set(),
 }: GeneratedImagesGridProps) {
   const approvedCount = images.filter(
     (img) => getReviewStatus(img.id) === "approved"
@@ -46,6 +48,7 @@ export function GeneratedImagesGrid({
       <div className="space-y-3">
         {images.map((image) => {
           const reviewStatus = getReviewStatus(image.id)
+          const isRegenerating = regeneratingIds.has(image.id)
 
           return (
             <div
@@ -63,8 +66,13 @@ export function GeneratedImagesGrid({
                   type="button"
                   className="relative shrink-0 cursor-pointer overflow-hidden rounded-md focus:outline-none"
                   onClick={() => onImageClick(image)}
+                  disabled={isRegenerating}
                 >
-                  {image.status === "completed" ? (
+                  {isRegenerating ? (
+                    <div className="flex size-20 flex-col items-center justify-center gap-1 bg-muted/50 text-muted-foreground">
+                      <Loader2 className="size-5 animate-spin" />
+                    </div>
+                  ) : image.status === "completed" ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={image.imageUrl}
@@ -80,9 +88,16 @@ export function GeneratedImagesGrid({
 
                 {/* Info + actions */}
                 <div className="flex min-w-0 flex-1 flex-col justify-between">
-                  <Badge variant="secondary" className="w-fit text-xs">
-                    {getImageTypeName(image.imageType)}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="w-fit text-xs">
+                      {getImageTypeName(image.imageType)}
+                    </Badge>
+                    {isRegenerating && (
+                      <span className="text-xs text-muted-foreground animate-pulse">
+                        Bezig...
+                      </span>
+                    )}
+                  </div>
 
                   {/* Action buttons */}
                   <div className="flex items-center gap-1.5">
@@ -96,6 +111,7 @@ export function GeneratedImagesGrid({
                           : "text-green-600 border-green-300 hover:bg-green-50 hover:text-green-700"
                       )}
                       onClick={() => onApprove(image.id)}
+                      disabled={isRegenerating}
                     >
                       <Check className="size-3.5" />
                       Goed
@@ -110,6 +126,7 @@ export function GeneratedImagesGrid({
                           : "text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700"
                       )}
                       onClick={() => onReject(image.id)}
+                      disabled={isRegenerating}
                     >
                       <X className="size-3.5" />
                       Afkeur
@@ -120,8 +137,13 @@ export function GeneratedImagesGrid({
                         variant="outline"
                         className="h-8 text-xs"
                         onClick={() => onRegenerate(image.id)}
+                        disabled={isRegenerating}
                       >
-                        <RotateCcw className="size-3.5" />
+                        {isRegenerating ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <RotateCcw className="size-3.5" />
+                        )}
                         Opnieuw
                       </Button>
                     )}

@@ -6,6 +6,7 @@ import { reserveUsage } from "@/lib/data/billing"
 import { requireAuth } from "@/lib/data/auth"
 import { isAllowedImageUrl } from "@/lib/storage/images"
 import { runPipeline } from "@/lib/generation/pipeline"
+import { hasActiveGenerationJob } from "@/lib/data/generation"
 import type { PipelineEvent } from "@/lib/generation/pipeline"
 
 export const maxDuration = 300 // 5 minutes max for Vercel
@@ -76,6 +77,18 @@ export async function POST(request: NextRequest) {
   // Convert to legacy format for prompt templates
   const product = toLegacyProduct(dbProduct)
   const organizationId = dbProduct.organization_id
+
+  // Concurrency guard: max 1 batch generation per organization
+  const isGenerating = await hasActiveGenerationJob(organizationId)
+  if (isGenerating) {
+    return Response.json(
+      {
+        error: "Er loopt al een generatie voor je organisatie. Wacht tot deze klaar is.",
+        code: "GENERATION_IN_PROGRESS",
+      },
+      { status: 429 }
+    )
+  }
 
   // Atomic usage check + reservation (prevents race conditions)
   const usageCheck = await reserveUsage(organizationId, imageTypes.length)

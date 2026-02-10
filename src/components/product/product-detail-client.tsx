@@ -58,6 +58,7 @@ export function ProductDetailClient({
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(settings.defaultAspectRatio)
   const [resolution, setResolution] = useState<ImageSize>(settings.defaultResolution)
   const [isSynced, setIsSynced] = useState(false)
+  const [regeneratingIds, setRegeneratingIds] = useState<Set<string>>(new Set())
 
   // Sync settings when grower settings are loaded from localStorage
   useEffect(() => {
@@ -147,6 +148,10 @@ export function ProductDetailClient({
       const image = generation.results.find((r) => r.id === imageId)
       if (!image || !sourceImageUrl) return
 
+      // Voorkom dubbele regeneratie
+      if (regeneratingIds.has(imageId)) return
+
+      setRegeneratingIds((prev) => new Set(prev).add(imageId))
       review.resetReview(imageId)
       toast.loading("Opnieuw genereren...", { id: `regen-${imageId}` })
 
@@ -179,9 +184,15 @@ export function ProductDetailClient({
           err instanceof Error ? err.message : "Opnieuw genereren mislukt",
           { id: `regen-${imageId}` }
         )
+      } finally {
+        setRegeneratingIds((prev) => {
+          const next = new Set(prev)
+          next.delete(imageId)
+          return next
+        })
       }
     },
-    [generation.results, sourceImageUrl, product.id, aspectRatio, resolution, review]
+    [generation.results, sourceImageUrl, product.id, aspectRatio, resolution, review, regeneratingIds]
   )
 
   const handleImageClick = useCallback(
@@ -339,6 +350,7 @@ export function ProductDetailClient({
                       onRegenerate={handleRegenerate}
                       getReviewStatus={review.getStatus}
                       onImageClick={handleImageClick}
+                      regeneratingIds={regeneratingIds}
                     />
                   </CardContent>
                 </Card>
