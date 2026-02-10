@@ -852,6 +852,7 @@ export type Database = {
           accessory_id: string
           created_at: string | null
           id: string
+          is_favorite: boolean
           notes: string | null
           organization_id: string
           product_id: string
@@ -861,6 +862,7 @@ export type Database = {
           accessory_id: string
           created_at?: string | null
           id?: string
+          is_favorite?: boolean
           notes?: string | null
           organization_id: string
           product_id: string
@@ -870,6 +872,7 @@ export type Database = {
           accessory_id?: string
           created_at?: string | null
           id?: string
+          is_favorite?: boolean
           notes?: string | null
           organization_id?: string
           product_id?: string
@@ -1212,6 +1215,24 @@ export type Database = {
     }
     Functions: {
       get_user_org_ids: { Args: never; Returns: string[] }
+      release_generation_usage: {
+        Args: { p_organization_id: string; p_release_count: number }
+        Returns: undefined
+      }
+      reserve_generation_usage: {
+        Args: { p_organization_id: string; p_requested_count: number }
+        Returns: Json
+      }
+      upsert_generation_usage: {
+        Args: {
+          p_completed_count: number
+          p_failed_count: number
+          p_organization_id: string
+          p_period_end: string
+          p_period_start: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
@@ -1224,7 +1245,7 @@ export type Database = {
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "horti">]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends

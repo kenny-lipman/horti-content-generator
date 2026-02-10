@@ -46,3 +46,30 @@ export async function createCombinationAction(data: {
     return { success: false, error: 'Er is een onverwachte fout opgetreden' }
   }
 }
+
+/**
+ * Toggle favoriet status van een combinatie.
+ */
+export async function toggleFavoriteCombinationAction(
+  combinationId: string,
+  isFavorite: boolean
+): Promise<ActionResult> {
+  try {
+    if (!combinationId) {
+      return { success: false, error: 'Combinatie ID is verplicht' }
+    }
+
+    const { toggleFavorite } = await import('@/lib/data/combinations')
+    const ok = await toggleFavorite(combinationId, isFavorite)
+
+    if (!ok) {
+      return { success: false, error: 'Fout bij het bijwerken van de favoriet status' }
+    }
+
+    revalidatePath('/product/[id]', 'page')
+    return { success: true, combinationId }
+  } catch (error) {
+    console.error('Unexpected error in toggleFavoriteCombinationAction:', error)
+    return { success: false, error: 'Er is een onverwachte fout opgetreden' }
+  }
+}

@@ -123,6 +123,7 @@ export async function createGeneratedImage(data: {
   temperature?: number
   generationDurationMs?: number
   error?: string
+  combinationId?: string
 }): Promise<string | null> {
   const supabase = createAdminClient()
 
@@ -139,6 +140,7 @@ export async function createGeneratedImage(data: {
     temperature: data.temperature ?? null,
     generation_duration_ms: data.generationDurationMs ?? null,
     error: data.error ?? null,
+    combination_id: data.combinationId ?? null,
   }
 
   const { data: image, error } = await supabase
@@ -262,6 +264,7 @@ export interface ContentLibraryImage {
   product_id: string
   product_name: string
   product_sku: string | null
+  combination_id: string | null
 }
 
 export interface GetContentLibraryOptions {
@@ -292,7 +295,7 @@ export async function getContentLibrary(
   // RLS filtert automatisch op organization
   let query = supabase
     .from('generated_images')
-    .select('id, image_type, image_url, status, review_status, created_at, product_id, products!inner(name, sku)', { count: 'exact' })
+    .select('id, image_type, image_url, status, review_status, created_at, product_id, combination_id, products!inner(name, sku)', { count: 'exact' })
     .eq('status', 'completed')
 
   if (reviewStatus) {
@@ -331,6 +334,7 @@ export async function getContentLibrary(
       product_id: row.product_id as string,
       product_name: products?.name ?? 'Onbekend',
       product_sku: products?.sku ?? null,
+      combination_id: (row.combination_id as string) ?? null,
     }
   })
 

@@ -14,7 +14,8 @@ const COMBINATION_SELECT = `
   *,
   products!product_combinations_product_id_fkey(name, sku, catalog_image_url),
   accessory_product:products!product_combinations_accessory_id_fkey(name, sku, catalog_image_url),
-  scene_templates(name, scene_type, thumbnail_url)
+  scene_templates(name, scene_type, thumbnail_url),
+  generated_images!generated_images_combination_id_fkey(id, image_url, review_status, status)
 ` as const
 
 /**
@@ -115,4 +116,26 @@ export async function getAccessoryProducts(): Promise<Array<{ id: string; name: 
   }
 
   return data ?? []
+}
+
+/**
+ * Toggle favoriet status van een combinatie.
+ */
+export async function toggleFavorite(
+  combinationId: string,
+  isFavorite: boolean
+): Promise<boolean> {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('product_combinations')
+    .update({ is_favorite: isFavorite })
+    .eq('id', combinationId)
+
+  if (error) {
+    console.error('[toggleFavorite] Error:', error.message)
+    return false
+  }
+
+  return true
 }

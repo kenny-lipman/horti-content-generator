@@ -195,6 +195,7 @@ export async function POST(request: NextRequest) {
       promptUsed: prompt,
       temperature: 0.6,
       generationDurationMs: durationMs,
+      combinationId,
     })
 
     // Track usage

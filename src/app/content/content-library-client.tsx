@@ -3,7 +3,7 @@
 import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useCallback, useTransition } from "react"
-import { Check, X, ImageIcon } from "lucide-react"
+import { Check, X, ImageIcon, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -225,9 +225,16 @@ export function ContentLibraryClient({
                 {/* Info */}
                 <div className="space-y-1 p-2">
                   <div className="flex items-center justify-between gap-1">
-                    <Badge variant="secondary" className="text-[10px]">
-                      {getImageTypeName(image.image_type)}
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      <Badge variant="secondary" className="text-[10px]">
+                        {getImageTypeName(image.image_type)}
+                      </Badge>
+                      {image.combination_id && (
+                        <span title="Combinatie" className="flex items-center">
+                          <Layers className="h-3 w-3 text-muted-foreground" />
+                        </span>
+                      )}
+                    </div>
                     <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", reviewInfo.color)}>
                       {reviewInfo.label}
                     </span>

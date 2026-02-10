@@ -96,6 +96,7 @@ export interface CombinationWithDetails extends ProductCombination {
   products: { name: string; sku: string | null; catalog_image_url: string | null } | null
   accessory_product: { name: string; sku: string | null; catalog_image_url: string | null } | null
   scene_templates: { name: string; scene_type: string; thumbnail_url: string | null } | null
+  generated_images: Array<{ id: string; image_url: string | null; review_status: string; status: string }> | null
 }
 
 // ============================================
