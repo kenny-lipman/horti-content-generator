@@ -17,7 +17,7 @@ export default async function SettingsPage() {
     getOrganization(orgId),
     getTeamMembers(orgId),
     getUsageSummary(orgId),
-    getIntegrations(),
+    getIntegrations(orgId),
     getAllSyncLogs(),
   ])
 

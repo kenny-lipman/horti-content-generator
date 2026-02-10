@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     .replace(/\/+$/, '')
 
   // Check of er al een Shopify integratie bestaat
-  const existingIntegration = await getIntegrationByPlatform('shopify')
+  const existingIntegration = await getIntegrationByPlatform('shopify', auth.orgId)
   if (existingIntegration && existingIntegration.status === 'connected') {
     return Response.json(
       { error: 'Shopify is al verbonden', code: 'ALREADY_CONNECTED' },

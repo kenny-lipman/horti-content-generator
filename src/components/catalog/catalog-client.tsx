@@ -1,52 +1,70 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import { useCallback } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SearchFilterBar } from "./search-filter-bar"
 import { ProductGrid } from "./product-grid"
+import { Pagination } from "./pagination"
 import type { ProductWithAttributes } from "@/lib/supabase/types"
 
 interface CatalogClientProps {
-  initialProducts: ProductWithAttributes[]
+  products: ProductWithAttributes[]
   categories: string[]
+  currentPage: number
+  totalPages: number
+  totalCount: number
+  currentSearch: string
+  currentCategory: string
 }
 
-export function CatalogClient({ initialProducts, categories }: CatalogClientProps) {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("all")
+export function CatalogClient({
+  products,
+  categories,
+  currentPage,
+  totalPages,
+  totalCount,
+  currentSearch,
+  currentCategory,
+}: CatalogClientProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
-  const handleSearchChange = useCallback((query: string) => {
-    setSearchQuery(query)
-  }, [])
+  const updateParams = useCallback(
+    (updates: Record<string, string>) => {
+      const params = new URLSearchParams(searchParams.toString())
+      for (const [key, value] of Object.entries(updates)) {
+        if (value) {
+          params.set(key, value)
+        } else {
+          params.delete(key)
+        }
+      }
+      // Reset naar pagina 1 bij zoek/filter wijziging
+      if ('search' in updates || 'category' in updates) {
+        params.delete('page')
+      }
+      const qs = params.toString()
+      router.push(qs ? `/?${qs}` : '/')
+    },
+    [router, searchParams]
+  )
 
-  const handleCategoryChange = useCallback((category: string) => {
-    setSelectedCategory(category)
-  }, [])
+  const handleSearchChange = useCallback(
+    (query: string) => {
+      updateParams({ search: query })
+    },
+    [updateParams]
+  )
 
-  const filteredProducts = useMemo(() => {
-    let result = initialProducts
-
-    // Zoek op naam, SKU of beschrijving
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.sku?.toLowerCase().includes(q) ?? false) ||
-          (p.description?.toLowerCase().includes(q) ?? false) ||
-          (p.plant_attributes?.vbn_code?.toLowerCase().includes(q) ?? false)
-      )
-    }
-
-    // Filter op categorie
-    if (selectedCategory && selectedCategory !== "all") {
-      result = result.filter((p) => p.category === selectedCategory)
-    }
-
-    return result
-  }, [initialProducts, searchQuery, selectedCategory])
+  const handleCategoryChange = useCallback(
+    (category: string) => {
+      updateParams({ category: category === 'all' ? '' : category })
+    },
+    [updateParams]
+  )
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -69,12 +87,21 @@ export function CatalogClient({ initialProducts, categories }: CatalogClientProp
         <SearchFilterBar
           onSearchChange={handleSearchChange}
           onCategoryChange={handleCategoryChange}
-          totalCount={filteredProducts.length}
+          totalCount={totalCount}
           categories={categories}
+          initialSearch={currentSearch}
+          initialCategory={currentCategory}
         />
       </div>
 
-      <ProductGrid products={filteredProducts} />
+      <ProductGrid products={products} />
+
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+        />
+      )}
     </div>
   )
 }

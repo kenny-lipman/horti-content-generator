@@ -16,7 +16,7 @@ export async function POST() {
   }
 
   // Haal Floriday integratie op
-  const integration = await getIntegrationByPlatform('floriday')
+  const integration = await getIntegrationByPlatform('floriday', auth.orgId)
 
   if (!integration || integration.status !== 'connected') {
     return Response.json(

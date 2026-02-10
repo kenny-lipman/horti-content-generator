@@ -16,7 +16,7 @@ export async function POST() {
   }
 
   // Haal WooCommerce integratie op
-  const integration = await getIntegrationByPlatform('woocommerce')
+  const integration = await getIntegrationByPlatform('woocommerce', auth.orgId)
 
   if (!integration || integration.status !== 'connected') {
     return Response.json(

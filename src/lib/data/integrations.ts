@@ -11,12 +11,18 @@ import type { Integration, IntegrationProductMapping, IntegrationSyncLog, Json }
  * Haal alle integraties op voor de huidige organisatie.
  * RLS filtert automatisch op organization_id.
  */
-export async function getIntegrations(): Promise<Integration[]> {
+export async function getIntegrations(orgId?: string): Promise<Integration[]> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('integrations')
     .select('*')
+
+  if (orgId) {
+    query = query.eq('organization_id', orgId)
+  }
+
+  const { data, error } = await query
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -31,13 +37,19 @@ export async function getIntegrations(): Promise<Integration[]> {
  * Haal een specifieke integratie op basis van platform.
  * Retourneert null als er geen integratie is voor het platform.
  */
-export async function getIntegrationByPlatform(platform: string): Promise<Integration | null> {
+export async function getIntegrationByPlatform(platform: string, orgId?: string): Promise<Integration | null> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('integrations')
     .select('*')
     .eq('platform', platform)
+
+  if (orgId) {
+    query = query.eq('organization_id', orgId)
+  }
+
+  const { data, error } = await query
     .limit(1)
     .single()
 
@@ -55,13 +67,19 @@ export async function getIntegrationByPlatform(platform: string): Promise<Integr
 /**
  * Haal een integratie op basis van ID.
  */
-export async function getIntegrationById(id: string): Promise<Integration | null> {
+export async function getIntegrationById(id: string, orgId?: string): Promise<Integration | null> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('integrations')
     .select('*')
     .eq('id', id)
+
+  if (orgId) {
+    query = query.eq('organization_id', orgId)
+  }
+
+  const { data, error } = await query
     .single()
 
   if (error) {

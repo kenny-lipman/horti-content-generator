@@ -10,8 +10,9 @@ export async function POST(
   { params }: { params: Promise<{ platform: string }> }
 ) {
   // Auth check
+  let auth: { userId: string; orgId: string }
   try {
-    await requireAuth()
+    auth = await requireAuth()
   } catch (res) {
     if (res instanceof Response) return res
     return Response.json(
@@ -52,7 +53,7 @@ export async function POST(
   }
 
   // Haal integratie op
-  const integration = await getIntegrationByPlatform(platform)
+  const integration = await getIntegrationByPlatform(platform, auth.orgId)
 
   if (!integration || integration.status !== 'connected') {
     return Response.json(

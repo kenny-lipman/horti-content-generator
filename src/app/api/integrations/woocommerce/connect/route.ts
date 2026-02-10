@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   const normalizedUrl = storeUrl.replace(/\/+$/, '')
 
   // Check of er al een WooCommerce integratie bestaat
-  const existingIntegration = await getIntegrationByPlatform('woocommerce')
+  const existingIntegration = await getIntegrationByPlatform('woocommerce', auth.orgId)
   if (existingIntegration && existingIntegration.status === 'connected') {
     return Response.json(
       { error: 'WooCommerce is al verbonden', code: 'ALREADY_CONNECTED' },

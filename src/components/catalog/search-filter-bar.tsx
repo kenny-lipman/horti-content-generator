@@ -16,6 +16,8 @@ interface SearchFilterBarProps {
   onCategoryChange: (category: string) => void
   totalCount: number
   categories?: string[]
+  initialSearch?: string
+  initialCategory?: string
 }
 
 export function SearchFilterBar({
@@ -23,18 +25,27 @@ export function SearchFilterBar({
   onCategoryChange,
   totalCount,
   categories = [],
+  initialSearch = "",
+  initialCategory = "",
 }: SearchFilterBarProps) {
-  const [inputValue, setInputValue] = useState("")
+  const [inputValue, setInputValue] = useState(initialSearch)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isFirstRender = useRef(true)
 
   useEffect(() => {
+    // Skip de eerste render — die komt van de server
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+
     if (timerRef.current) {
       clearTimeout(timerRef.current)
     }
 
     timerRef.current = setTimeout(() => {
       onSearchChange(inputValue)
-    }, 300)
+    }, 400)
 
     return () => {
       if (timerRef.current) {
@@ -60,7 +71,10 @@ export function SearchFilterBar({
 
         {/* Categorie filter */}
         {categories.length > 0 && (
-          <Select onValueChange={onCategoryChange} defaultValue="all">
+          <Select
+            onValueChange={onCategoryChange}
+            defaultValue={initialCategory || "all"}
+          >
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Alle categorieën" />
             </SelectTrigger>

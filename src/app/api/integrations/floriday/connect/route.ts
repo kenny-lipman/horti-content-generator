@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Check of er al een Floriday integratie bestaat
-  const existingIntegration = await getIntegrationByPlatform('floriday')
+  const existingIntegration = await getIntegrationByPlatform('floriday', auth.orgId)
   if (existingIntegration && existingIntegration.status === 'connected') {
     return Response.json(
       { error: 'Floriday is al verbonden', code: 'ALREADY_CONNECTED' },

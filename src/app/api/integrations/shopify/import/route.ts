@@ -16,7 +16,7 @@ export async function POST() {
   }
 
   // Haal Shopify integratie op
-  const integration = await getIntegrationByPlatform('shopify')
+  const integration = await getIntegrationByPlatform('shopify', auth.orgId)
 
   if (!integration || integration.status !== 'connected') {
     return Response.json(
