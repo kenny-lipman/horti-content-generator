@@ -43,8 +43,26 @@ export async function GET(request: NextRequest) {
   // Genereer voorbeeld data op basis van product type
   const sampleData = getSampleDataForType(template.product_type)
 
+  // Converteer column_mappings van DB formaat naar ColumnMapping[]
+  // DB slaat op als { dbField: excelColumn }, code verwacht [{ excelColumn, dbField }]
+  const rawMappings = template.column_mappings as unknown
+  let columnMappings: ColumnMapping[]
+
+  if (Array.isArray(rawMappings)) {
+    columnMappings = rawMappings
+  } else if (rawMappings && typeof rawMappings === 'object') {
+    columnMappings = Object.entries(rawMappings).map(([dbField, excelColumn]) => ({
+      dbField,
+      excelColumn: String(excelColumn),
+    }))
+  } else {
+    return Response.json(
+      { error: 'Template heeft geen geldige kolom mappings', code: 'INVALID_MAPPINGS' },
+      { status: 400 }
+    )
+  }
+
   // Genereer Excel bestand
-  const columnMappings = template.column_mappings as unknown as ColumnMapping[]
   const buffer = generateSampleExcel(columnMappings, sampleData)
 
   // Maak een veilige bestandsnaam

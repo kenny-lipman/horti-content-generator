@@ -45,7 +45,7 @@ export async function getOrganization(orgId: string): Promise<OrganizationWithDe
       .from('organizations')
       .select('*')
       .eq('id', orgId)
-      .single(),
+      .maybeSingle(),
     supabase
       .from('organization_business_types')
       .select('business_type')
@@ -131,6 +131,123 @@ export async function updateBusinessTypes(
   }
 
   return true
+}
+
+// ============================================
+// Organization Creation (for signup)
+// ============================================
+
+/**
+ * Genereer een unieke slug voor een organisatie.
+ */
+async function generateUniqueSlug(
+  supabase: ReturnType<typeof createAdminClient>,
+  base: string
+): Promise<string> {
+  const slug = base
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .substring(0, 48) || 'mijn-organisatie'
+
+  // Check if slug exists
+  const { data } = await supabase
+    .from('organizations')
+    .select('id')
+    .eq('slug', slug)
+    .maybeSingle()
+
+  if (!data) return slug
+
+  // Append number suffix until unique
+  for (let i = 2; i <= 100; i++) {
+    const candidate = `${slug}-${i}`
+    const { data: existing } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('slug', candidate)
+      .maybeSingle()
+    if (!existing) return candidate
+  }
+
+  // Fallback: append random suffix
+  return `${slug}-${Date.now().toString(36)}`
+}
+
+/**
+ * Maak een organisatie aan voor een nieuwe gebruiker (signup flow).
+ * Maakt org + membership (admin) + subscription (free trial) aan.
+ * Gebruikt admin client (geen INSERT RLS policies).
+ */
+export async function createOrganizationForNewUser(params: {
+  userId: string
+  email: string
+  orgName?: string
+}): Promise<{ organizationId: string } | { error: string }> {
+  const supabase = createAdminClient()
+
+  const name = params.orgName?.trim() || params.email.split('@')[0] || 'Mijn Organisatie'
+  const slug = await generateUniqueSlug(supabase, name)
+
+  // 1. Create organization
+  const { data: org, error: orgError } = await supabase
+    .from('organizations')
+    .insert({
+      name,
+      slug,
+      billing_email: params.email,
+    })
+    .select('id')
+    .single()
+
+  if (orgError || !org) {
+    console.error('[createOrganizationForNewUser] Org insert error:', orgError?.message)
+    return { error: 'Kon organisatie niet aanmaken' }
+  }
+
+  // 2. Add user as admin member
+  const { error: memberError } = await supabase
+    .from('organization_members')
+    .insert({
+      organization_id: org.id,
+      user_id: params.userId,
+      role: 'admin',
+      invited_at: new Date().toISOString(),
+      accepted_at: new Date().toISOString(),
+    })
+
+  if (memberError) {
+    console.error('[createOrganizationForNewUser] Member insert error:', memberError.message)
+    // Rollback: delete org
+    await supabase.from('organizations').delete().eq('id', org.id)
+    return { error: 'Kon lidmaatschap niet aanmaken' }
+  }
+
+  // 3. Assign free trial subscription
+  const { data: plan } = await supabase
+    .from('subscription_plans')
+    .select('id')
+    .eq('slug', 'free-trial')
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (plan) {
+    const now = new Date()
+    const trialEnd = new Date(now)
+    trialEnd.setDate(trialEnd.getDate() + 30)
+
+    await supabase
+      .from('subscriptions')
+      .insert({
+        organization_id: org.id,
+        plan_id: plan.id,
+        status: 'trialing',
+        current_period_start: now.toISOString().split('T')[0],
+        current_period_end: trialEnd.toISOString().split('T')[0],
+      })
+  }
+
+  return { organizationId: org.id }
 }
 
 // ============================================

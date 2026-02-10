@@ -67,6 +67,10 @@ export async function requireAuth(): Promise<{
 }> {
   const user = await getCurrentUser()
   if (!user) {
+    // In development: fallback zodat API routes werken zonder login
+    if (process.env.NODE_ENV !== 'production') {
+      return { userId: 'dev-user', orgId: '11111111-1111-1111-1111-111111111111' }
+    }
     throw new Response(
       JSON.stringify({ error: 'Niet ingelogd', code: 'UNAUTHORIZED' }),
       { status: 401, headers: { 'Content-Type': 'application/json' } }
@@ -86,4 +90,38 @@ export async function requireAuth(): Promise<{
   }
 
   return { userId: user.id, orgId }
+}
+
+/**
+ * Zorg dat een gebruiker een organisatie heeft (idempotent).
+ * Als de user al een org heeft, retourneer die.
+ * Anders, maak een nieuwe organisatie aan.
+ */
+export async function ensureUserHasOrganization(
+  userId: string,
+  email: string,
+  orgName?: string
+): Promise<string> {
+  // Check of user al een org heeft (via admin client)
+  const supabase = createAdminClient()
+  const { data } = await supabase
+    .from('organization_members')
+    .select('organization_id')
+    .eq('user_id', userId)
+    .not('accepted_at', 'is', null)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (data) return data.organization_id
+
+  // Maak nieuwe organisatie aan
+  const { createOrganizationForNewUser } = await import('@/lib/data/organization')
+  const result = await createOrganizationForNewUser({ userId, email, orgName })
+
+  if ('error' in result) {
+    throw new Error(result.error)
+  }
+
+  return result.organizationId
 }

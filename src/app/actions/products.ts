@@ -41,7 +41,10 @@ const productSchema = z.object({
   }),
   category: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  organization_id: z.string().uuid({ message: 'Ongeldig organisatie-ID' }),
+  organization_id: z.string().regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    { message: 'Ongeldig organisatie-ID' }
+  ),
 })
 
 const plantAttributesSchema = z.object({

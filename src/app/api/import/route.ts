@@ -92,7 +92,22 @@ export async function POST(request: NextRequest) {
   let rows
   try {
     const buffer = await file.arrayBuffer()
-    const columnMappings = template.column_mappings as unknown as ColumnMapping[]
+    // Converteer column_mappings van DB formaat naar ColumnMapping[]
+    const rawMappings = template.column_mappings as unknown
+    let columnMappings: ColumnMapping[]
+    if (Array.isArray(rawMappings)) {
+      columnMappings = rawMappings
+    } else if (rawMappings && typeof rawMappings === 'object') {
+      columnMappings = Object.entries(rawMappings).map(([dbField, excelColumn]) => ({
+        dbField,
+        excelColumn: String(excelColumn),
+      }))
+    } else {
+      return Response.json(
+        { error: 'Template heeft geen geldige kolom mappings', code: 'INVALID_MAPPINGS' },
+        { status: 400 }
+      )
+    }
     rows = parseExcelFile(buffer, columnMappings)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Onbekende fout'

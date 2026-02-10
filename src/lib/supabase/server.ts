@@ -5,9 +5,18 @@ import type { Database } from './database.types'
 /**
  * Supabase server client — voor gebruik in Server Components, Route Handlers, Server Actions.
  * Schema: horti (NIET public!)
+ *
+ * In development zonder auth sessie valt dit terug op de admin client
+ * zodat RLS geen queries blokkeert tijdens lokale ontwikkeling.
  */
 export async function createClient() {
   const cookieStore = await cookies()
+
+  // In dev: altijd admin client zodat RLS geen queries blokkeert
+  // (stale/expired cookies zouden anders de normale client activeren)
+  if (process.env.NODE_ENV !== 'production') {
+    return createAdminClient()
+  }
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
-import { Leaf, Settings, Plus, LogOut, Images, Palette, Bell, LayoutDashboard, Package, Upload } from "lucide-react"
+import { Leaf, Settings, Plus, LogOut, LogIn, Images, Palette, Bell, LayoutDashboard, Package, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -43,6 +43,9 @@ function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
 
   const fetchData = useCallback(async () => {
     const [items, count] = await Promise.all([
@@ -80,6 +83,15 @@ function NotificationBell() {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
       setUnreadCount(0)
     }
+  }
+
+  if (!mounted) {
+    // Render a static placeholder during SSR to avoid Radix ID hydration mismatch
+    return (
+      <Button variant="ghost" size="sm" className="relative" title="Meldingen">
+        <Bell className="h-4 w-4" />
+      </Button>
+    )
   }
 
   return (
@@ -253,7 +265,7 @@ export function Header() {
               </Link>
             </Button>
 
-            {user && (
+            {user ? (
               <div className="ml-2 flex items-center gap-2 border-l pl-4">
                 <span className="text-xs text-muted-foreground">
                   {user.email}
@@ -267,6 +279,13 @@ export function Header() {
                   <LogOut className="h-4 w-4" />
                 </Button>
               </div>
+            ) : (
+              <Button variant="outline" size="sm" asChild className="ml-2">
+                <Link href="/login">
+                  <LogIn className="mr-1 h-4 w-4" />
+                  Inloggen
+                </Link>
+              </Button>
             )}
           </div>
         )}

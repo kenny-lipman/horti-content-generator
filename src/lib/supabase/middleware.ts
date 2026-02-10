@@ -39,7 +39,10 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/auth')
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
 
-  if (!user && !isAuthRoute && !isApiRoute) {
+  // In development: skip auth redirect zodat je zonder login kunt werken
+  const isDev = process.env.NODE_ENV !== 'production'
+
+  if (!user && !isAuthRoute && !isApiRoute && !isDev) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
