@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { Check, X, RotateCcw, ImageOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -73,10 +74,11 @@ export function GeneratedImagesGrid({
                       <Loader2 className="size-5 animate-spin" />
                     </div>
                   ) : image.status === "completed" ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={image.imageUrl}
                       alt={getImageTypeName(image.imageType)}
+                      width={80}
+                      height={80}
                       className="size-20 object-cover"
                     />
                   ) : (

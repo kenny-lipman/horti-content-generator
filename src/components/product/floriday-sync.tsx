@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -112,10 +113,11 @@ export function FloridaySync({
               <Checkbox checked={selectedIds.has(img.id)} tabIndex={-1} />
               <div className="size-10 shrink-0 overflow-hidden rounded border bg-muted">
                 {img.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={img.imageUrl}
                     alt={getTypeName(img)}
+                    width={40}
+                    height={40}
                     className="size-full object-cover"
                   />
                 ) : (

@@ -36,6 +36,7 @@ interface RecentImage {
   image_type: string
   review_status: string
   created_at: string | null
+  product_id: string
   product_name: string
 }
 
@@ -43,12 +44,24 @@ interface DashboardClientProps {
   stats: DashboardStats
   recentImages: RecentImage[]
   notifications: Notification[]
+  topImageType: { imageType: string; count: number } | null
 }
 
 const REVIEW_STATUS_COLORS: Record<string, string> = {
   approved: "bg-green-500",
   pending: "bg-yellow-500",
   rejected: "bg-red-500",
+}
+
+const IMAGE_TYPE_NAMES: Record<string, string> = {
+  white_background: "Witte achtergrond",
+  measuring_tape: "Meetlatfoto",
+  detail: "Detailfoto",
+  composite: "Composiet",
+  tray: "Tray",
+  lifestyle: "Sfeerbeeld",
+  seasonal: "Seizoensfoto",
+  danish_cart: "Deense Kar",
 }
 
 // ============================================
@@ -59,6 +72,7 @@ export function DashboardClient({
   stats,
   recentImages,
   notifications,
+  topImageType,
 }: DashboardClientProps) {
   const usagePercentage =
     stats.photosLimit !== null
@@ -120,9 +134,15 @@ export function DashboardClient({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.approvedCount}</div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Goedgekeurde foto&apos;s
-            </p>
+            {topImageType ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Populairst: <Badge variant="secondary" className="ml-1 text-[10px]">{IMAGE_TYPE_NAMES[topImageType.imageType] ?? topImageType.imageType}</Badge>
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Goedgekeurde foto&apos;s
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -163,8 +183,9 @@ export function DashboardClient({
               {recentImages.length > 0 ? (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {recentImages.map((img) => (
-                    <div
+                    <Link
                       key={img.id}
+                      href={`/product/${img.product_id}`}
                       className="group relative aspect-square overflow-hidden rounded-lg border bg-muted"
                     >
                       {img.image_url ? (
@@ -194,7 +215,7 @@ export function DashboardClient({
                           {img.product_name}
                         </p>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               ) : (

@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Trash2, Home, TreePine, Camera, ShoppingBag, Sparkles } from "lucide-react"
@@ -68,13 +69,14 @@ function SceneCard({
   return (
     <div className="group relative overflow-hidden rounded-lg border bg-card transition-colors hover:border-primary/50">
       {/* Thumbnail placeholder */}
-      <div className="flex aspect-[4/3] items-center justify-center bg-muted/50">
+      <div className="relative flex aspect-[4/3] items-center justify-center bg-muted/50">
         {scene.thumbnail_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={scene.thumbnail_url}
             alt={scene.name}
-            className="h-full w-full object-cover"
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+            className="object-cover"
           />
         ) : (
           <Icon className="h-10 w-10 text-muted-foreground/30" />

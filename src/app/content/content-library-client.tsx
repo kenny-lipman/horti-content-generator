@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useCallback, useTransition } from "react"
 import { Check, X, ImageIcon } from "lucide-react"
@@ -183,11 +184,12 @@ export function ContentLibraryClient({
                     />
                   </div>
                   {image.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={image.image_url}
                       alt={getImageTypeName(image.image_type)}
-                      className="h-full w-full object-cover"
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                      className="object-cover"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">

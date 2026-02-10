@@ -128,13 +128,14 @@ export async function getRecentImages(organizationId: string, limit = 8): Promis
   image_type: string
   review_status: string
   created_at: string | null
+  product_id: string
   product_name: string
 }>> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('generated_images')
-    .select('id, image_url, image_type, review_status, created_at, products!inner(name)')
+    .select('id, image_url, image_type, review_status, created_at, product_id, products!inner(name)')
     .eq('organization_id', organizationId)
     .eq('status', 'completed')
     .order('created_at', { ascending: false })
@@ -153,6 +154,7 @@ export async function getRecentImages(organizationId: string, limit = 8): Promis
       image_type: row.image_type as string,
       review_status: row.review_status as string,
       created_at: row.created_at as string | null,
+      product_id: row.product_id as string,
       product_name: products?.name ?? 'Onbekend',
     }
   })
@@ -234,4 +236,36 @@ export async function releaseUsage(organizationId: string, releaseCount: number)
   if (error) {
     console.error('[releaseUsage] RPC error:', error.message)
   }
+}
+
+/**
+ * Haal het meest gebruikte image type op voor een organisatie.
+ */
+export async function getTopImageType(organizationId: string): Promise<{ imageType: string; count: number } | null> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('generated_images')
+    .select('image_type')
+    .eq('organization_id', organizationId)
+    .eq('status', 'completed')
+
+  if (error || !data || data.length === 0) return null
+
+  const counts = new Map<string, number>()
+  for (const row of data) {
+    const t = row.image_type as string
+    counts.set(t, (counts.get(t) ?? 0) + 1)
+  }
+
+  let topType = ''
+  let topCount = 0
+  for (const [type, count] of counts) {
+    if (count > topCount) {
+      topType = type
+      topCount = count
+    }
+  }
+
+  return topType ? { imageType: topType, count: topCount } : null
 }
